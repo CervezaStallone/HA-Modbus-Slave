@@ -14,7 +14,7 @@ The integration only sends data while **Share usage statistics** is ticked. It i
 
 ### Who is responsible
 
-BRDC ([brdc.nl](https://brdc.nl)), the maintainer of this integration, is the controller. Questions and requests: [support-ha-modbus@brianrodriguez.nl](mailto:support-ha-modbus@brianrodriguez.nl).
+BRDC ([brdc.nl](https://brdc.nl)), the maintainer of this integration, is the controller. Questions and requests: [contact@brianrodriguez.nl](mailto:contact@brianrodriguez.nl).
 
 ### What is sent
 
@@ -73,7 +73,7 @@ De integratie stuurt alleen gegevens zolang **Gebruiksstatistieken delen** is aa
 
 ### Wie is verantwoordelijk
 
-BRDC ([brdc.nl](https://brdc.nl)), de maker van deze integratie, is verwerkingsverantwoordelijke. Vragen en verzoeken: [support-ha-modbus@brianrodriguez.nl](mailto:support-ha-modbus@brianrodriguez.nl).
+BRDC ([brdc.nl](https://brdc.nl)), de maker van deze integratie, is verwerkingsverantwoordelijke. Vragen en verzoeken: [contact@brianrodriguez.nl](mailto:contact@brianrodriguez.nl).
 
 ### Wat er verstuurd wordt
 
