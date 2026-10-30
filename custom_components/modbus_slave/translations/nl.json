@@ -1,0 +1,78 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Modbus Slave",
+        "description": "Home Assistant beantwoordt Modbus TCP-verzoeken voor dit slave ID op deze poort.",
+        "data": {
+          "slave_id": "Slave ID",
+          "port": "TCP-poort"
+        }
+      },
+      "reconfigure": {
+        "title": "Serverinstellingen",
+        "data": {
+          "slave_id": "Slave ID",
+          "port": "TCP-poort"
+        }
+      }
+    },
+    "error": {
+      "port_in_use": "Poort is bezet of kan niet worden geopend. Poorten onder 1024 vereisen extra rechten op Container/Core-installaties; kies bijv. 5020."
+    },
+    "abort": {
+      "already_configured": "Deze poort wordt al gebruikt door een andere Modbus Slave-entry.",
+      "reconfigure_successful": "Serverinstellingen bijgewerkt."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Mappings",
+        "menu_options": {
+          "add_mapping": "Mapping toevoegen",
+          "edit_mapping": "Mapping bewerken",
+          "remove_mapping": "Mappings verwijderen"
+        }
+      },
+      "add_mapping": {
+        "title": "Mapping toevoegen",
+        "data": {
+          "entity": "Entity",
+          "address": "Startadres"
+        }
+      },
+      "edit_mapping": {
+        "title": "Mapping bewerken",
+        "data": {
+          "mapping": "Mapping"
+        }
+      },
+      "remove_mapping": {
+        "title": "Mappings verwijderen",
+        "data": {
+          "mappings": "Mappings"
+        }
+      },
+      "confirm": {
+        "title": "{entity}",
+        "description": "Gedetecteerd: {summary}. Pas het type aan indien nodig. Schaal en signed gelden alleen voor scaled16. Schrijfbaar: iedereen die deze poort kan bereiken kan deze entity aansturen. Modbus TCP heeft geen authenticatie.",
+        "data": {
+          "address": "Startadres",
+          "data_type": "Datatype",
+          "scale": "Schaalfactor (scaled16)",
+          "signed": "Signed (scaled16)",
+          "writable": "Schrijfbaar door Modbus-master",
+          "fallback": "Waarde bij unavailable"
+        }
+      }
+    },
+    "error": {
+      "unsupported_entity": "Deze entity heeft geen aan/uit- of numerieke state.",
+      "type_mismatch": "Gebruik 'bit' voor aan/uit-entities en een numeriek type voor numerieke entities.",
+      "not_writable": "Deze entity kan met dit type niet worden aangestuurd. Schrijfbaar: switch, light, input_boolean, fan (bit); number, input_number (numeriek).",
+      "address_out_of_range": "De mapping loopt voorbij adres 65535.",
+      "address_overlap": "Adresbereik overlapt met de mapping van {conflict}."
+    }
+  }
+}

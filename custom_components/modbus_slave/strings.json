@@ -1,0 +1,78 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Modbus Slave",
+        "description": "Home Assistant will answer Modbus TCP requests for this slave ID on this port.",
+        "data": {
+          "slave_id": "Slave ID",
+          "port": "TCP port"
+        }
+      },
+      "reconfigure": {
+        "title": "Server settings",
+        "data": {
+          "slave_id": "Slave ID",
+          "port": "TCP port"
+        }
+      }
+    },
+    "error": {
+      "port_in_use": "Port is in use or cannot be opened. Ports below 1024 need extra privileges on Container/Core installs; pick e.g. 5020."
+    },
+    "abort": {
+      "already_configured": "This port is already used by another Modbus Slave entry.",
+      "reconfigure_successful": "Server settings updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Mappings",
+        "menu_options": {
+          "add_mapping": "Add mapping",
+          "edit_mapping": "Edit mapping",
+          "remove_mapping": "Remove mappings"
+        }
+      },
+      "add_mapping": {
+        "title": "Add mapping",
+        "data": {
+          "entity": "Entity",
+          "address": "Start address"
+        }
+      },
+      "edit_mapping": {
+        "title": "Edit mapping",
+        "data": {
+          "mapping": "Mapping"
+        }
+      },
+      "remove_mapping": {
+        "title": "Remove mappings",
+        "data": {
+          "mappings": "Mappings"
+        }
+      },
+      "confirm": {
+        "title": "{entity}",
+        "description": "Detected: {summary}. Change the type if needed. Scale and signed only apply to scaled16. Writable: anyone who can reach this port can control this entity. Modbus TCP has no authentication.",
+        "data": {
+          "address": "Start address",
+          "data_type": "Data type",
+          "scale": "Scale factor (scaled16)",
+          "signed": "Signed (scaled16)",
+          "writable": "Writable by Modbus master",
+          "fallback": "Value when unavailable"
+        }
+      }
+    },
+    "error": {
+      "unsupported_entity": "This entity has no on/off or numeric state.",
+      "type_mismatch": "Use 'bit' for on/off entities and a numeric type for numeric entities.",
+      "not_writable": "This entity cannot be controlled with this type. Writable: switch, light, input_boolean, fan (bit); number, input_number (numeric).",
+      "address_out_of_range": "The mapping runs past address 65535.",
+      "address_overlap": "Address range overlaps the mapping of {conflict}."
+    }
+  }
+}

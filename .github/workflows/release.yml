@@ -1,0 +1,24 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check manifest version matches tag
+        run: |
+          version=$(python3 -c "import json;print(json.load(open('custom_components/modbus_slave/manifest.json'))['version'])")
+          [ "v$version" = "${GITHUB_REF_NAME}" ] || { echo "manifest version $version != tag ${GITHUB_REF_NAME}"; exit 1; }
+      - name: Build zip
+        run: cd custom_components/modbus_slave && zip -r ../../modbus_slave.zip . -x '__pycache__/*'
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: modbus_slave.zip
+          generate_release_notes: true
