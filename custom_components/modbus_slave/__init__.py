@@ -28,7 +28,7 @@ class RuntimeData:
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Start the usage reporter once; it sends nothing unless an entry opted in."""
+    """Start the usage reporter once; it sends nothing when every entry opted out."""
     reporter = TelemetryReporter(hass)
     reporter.async_start()
     hass.data[DOMAIN] = reporter
