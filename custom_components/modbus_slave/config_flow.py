@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 from typing import Any
 
 import voluptuous as vol
@@ -17,11 +18,14 @@ from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TextSelector,
 )
 
 from .const import (
     BIT_DOMAINS,
     BIT_WRITABLE_DOMAINS,
+    CONF_ALLOWED_IPS,
+    CONF_HOST,
     CONF_MAPPINGS,
     CONF_PORT,
     CONF_SLAVE_ID,
@@ -31,24 +35,49 @@ from .const import (
     REG_WRITABLE_DOMAINS,
 )
 from .registers import DataType, Mapping, detect, find_overlap
+from .server import parse_networks
 
 
 def _number(lo: int, hi: int) -> NumberSelector:
     return NumberSelector(NumberSelectorConfig(min=lo, max=hi, step=1, mode=NumberSelectorMode.BOX))
 
 
-def _server_schema(slave_id: int, port: int) -> vol.Schema:
+def _server_schema(data: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
-            vol.Required(CONF_SLAVE_ID, default=slave_id): _number(1, 247),
-            vol.Required(CONF_PORT, default=port): _number(1, 65535),
+            vol.Required(CONF_SLAVE_ID, default=data[CONF_SLAVE_ID]): _number(1, 247),
+            vol.Required(CONF_PORT, default=data[CONF_PORT]): _number(1, 65535),
+            vol.Optional(CONF_HOST, default=data.get(CONF_HOST, "")): TextSelector(),
+            vol.Optional(
+                CONF_ALLOWED_IPS, default=", ".join(data.get(CONF_ALLOWED_IPS, []))
+            ): TextSelector(),
         }
     )
 
 
-async def _port_free(port: int) -> bool:
+def _parse_server(user_input: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
+    """Turn the server form into entry data, or return an error key."""
+    host = user_input.get(CONF_HOST, "").strip()
     try:
-        server = await asyncio.start_server(lambda _r, _w: None, port=port)
+        if host:
+            ipaddress.ip_address(host)
+    except ValueError:
+        return {}, "invalid_host"
+    try:
+        allowed = parse_networks(user_input.get(CONF_ALLOWED_IPS, ""))
+    except ValueError:
+        return {}, "invalid_allowed_ips"
+    return {
+        CONF_SLAVE_ID: int(user_input[CONF_SLAVE_ID]),
+        CONF_PORT: int(user_input[CONF_PORT]),
+        CONF_HOST: host,
+        CONF_ALLOWED_IPS: allowed,
+    }, None
+
+
+async def _port_free(host: str, port: int) -> bool:
+    try:
+        server = await asyncio.start_server(lambda _r, _w: None, host=host or None, port=port)
     except OSError:
         return False
     server.close()
@@ -73,19 +102,24 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            slave_id, port = int(user_input[CONF_SLAVE_ID]), int(user_input[CONF_PORT])
-            await self.async_set_unique_id(str(port))
-            self._abort_if_unique_id_configured()
-            if await _port_free(port):
+            data, error = _parse_server(user_input)
+            if not error:
+                await self.async_set_unique_id(str(data[CONF_PORT]))
+                self._abort_if_unique_id_configured()
+                if not await _port_free(data[CONF_HOST], data[CONF_PORT]):
+                    error = "port_in_use"
+            if not error:
                 return self.async_create_entry(
-                    title=_title(slave_id, port),
-                    data={CONF_SLAVE_ID: slave_id, CONF_PORT: port},
+                    title=_title(data[CONF_SLAVE_ID], data[CONF_PORT]),
+                    data=data,
                     options={CONF_MAPPINGS: []},
                 )
-            errors["base"] = "port_in_use"
+            errors["base"] = error
         return self.async_show_form(
             step_id="user",
-            data_schema=_server_schema(DEFAULT_SLAVE_ID, DEFAULT_PORT),
+            data_schema=_server_schema(
+                user_input or {CONF_SLAVE_ID: DEFAULT_SLAVE_ID, CONF_PORT: DEFAULT_PORT}
+            ),
             errors=errors,
         )
 
@@ -95,22 +129,24 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
         entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
         if user_input is not None:
-            slave_id, port = int(user_input[CONF_SLAVE_ID]), int(user_input[CONF_PORT])
-            if port != entry.data[CONF_PORT]:
-                await self.async_set_unique_id(str(port))
+            data, error = _parse_server(user_input)
+            # an unchanged port is held by our own server, so it can't be checked
+            if not error and data[CONF_PORT] != entry.data[CONF_PORT]:
+                await self.async_set_unique_id(str(data[CONF_PORT]))
                 self._abort_if_unique_id_configured()
-                if not await _port_free(port):
-                    errors["base"] = "port_in_use"
-            if not errors:
+                if not await _port_free(data[CONF_HOST], data[CONF_PORT]):
+                    error = "port_in_use"
+            if not error:
                 return self.async_update_reload_and_abort(
                     entry,
-                    unique_id=str(port),
-                    title=_title(slave_id, port),
-                    data={CONF_SLAVE_ID: slave_id, CONF_PORT: port},
+                    unique_id=str(data[CONF_PORT]),
+                    title=_title(data[CONF_SLAVE_ID], data[CONF_PORT]),
+                    data=data,
                 )
+            errors["base"] = error
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=_server_schema(entry.data[CONF_SLAVE_ID], entry.data[CONF_PORT]),
+            data_schema=_server_schema(user_input or entry.data),
             errors=errors,
         )
 

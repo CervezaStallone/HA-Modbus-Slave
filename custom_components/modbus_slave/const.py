@@ -4,6 +4,8 @@ DOMAIN = "modbus_slave"
 
 CONF_SLAVE_ID = "slave_id"
 CONF_PORT = "port"
+CONF_HOST = "host"
+CONF_ALLOWED_IPS = "allowed_ips"
 CONF_MAPPINGS = "mappings"
 
 DEFAULT_SLAVE_ID = 1
