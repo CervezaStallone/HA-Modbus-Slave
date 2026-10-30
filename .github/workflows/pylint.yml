@@ -1,0 +1,33 @@
+name: Lint Code
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint with Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff (Linting)
+        run: ruff check .
+
+      - name: Run Ruff (Formatting check)
+        run: ruff format --check .
