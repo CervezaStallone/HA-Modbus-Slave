@@ -94,7 +94,7 @@ custom_components/modbus_slave/
 ├── diagnostics.py        # Diagnostics download (listen address and allowlist redacted)
 ├── registers.py          # Pure logic, no HA imports: type detection, encode/decode, overlap
 ├── server.py             # The only pymodbus module: context adapter, write-back, allowlist, server start/stop
-├── telemetry.py          # Opt-out usage report: random install ID only (see PRIVACY.md)
+├── telemetry.py          # Opt-out usage report: random install ID and integration version (see PRIVACY.md)
 ├── strings.json          # Translatable UI strings (source)
 └── translations/
     ├── en.json           # English — must equal strings.json

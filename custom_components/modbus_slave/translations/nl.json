@@ -14,7 +14,7 @@
         "data_description": {
           "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
           "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
-          "share_usage": "Standaard aangevinkt; vink uit om niets te versturen. Stuurt elke 6 uur alleen een willekeurige installatie-ID, zodat het aantal actieve installaties geteld kan worden; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({privacy_url})"
+          "share_usage": "Standaard aangevinkt; vink uit om niets te versturen. Stuurt elke 6 uur alleen een willekeurige installatie-ID en de versie van deze integratie, zodat actieve installaties en versies geteld kunnen worden; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({privacy_url})"
         }
       },
       "reconfigure": {
@@ -29,7 +29,7 @@
         "data_description": {
           "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
           "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
-          "share_usage": "Standaard aangevinkt; vink uit om niets te versturen. Stuurt elke 6 uur alleen een willekeurige installatie-ID, zodat het aantal actieve installaties geteld kan worden; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({privacy_url})"
+          "share_usage": "Standaard aangevinkt; vink uit om niets te versturen. Stuurt elke 6 uur alleen een willekeurige installatie-ID en de versie van deze integratie, zodat actieve installaties en versies geteld kunnen worden; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({privacy_url})"
         }
       }
     },

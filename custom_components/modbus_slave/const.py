@@ -18,7 +18,7 @@ BIT_WRITABLE_DOMAINS = {"switch", "light", "input_boolean", "fan"}
 REG_WRITABLE_DOMAINS = {"number", "input_number"}
 
 # Usage report (telemetry.py)
-TELEMETRY_SCHEMA = 1  # payload contract version, shared with the server
+TELEMETRY_SCHEMA = 2  # payload contract version, shared with the server
 CONF_SHARE_USAGE = "share_usage"  # entry data; ticked by default in setup
 TELEMETRY_URL = "https://ha-modbus.telemetry.brdc.nl/v1/report"
 PRIVACY_URL = "https://github.com/CervezaStallone/HA-Modbus-Slave/blob/main/PRIVACY.md"

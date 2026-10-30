@@ -58,7 +58,7 @@ In plain terms: everything Home Assistant knows — sensors, switches, setpoints
 - **Reconfigure** — change slave ID, port, listen address or allowed masters without re-adding the integration; mapping changes apply without restarting Home Assistant
 - **Diagnostics** — a diagnostics download with every mapping, its entity state and the exact register values a master reads
 - **English and Dutch** user interface
-- **Usage statistics** — ticked by default on the setup page; sends only a random installation ID to count active installations. See [Privacy and usage statistics](#privacy-and-usage-statistics)
+- **Usage statistics** — ticked by default on the setup page; sends only a random installation ID and the integration version, to count active installations and versions. See [Privacy and usage statistics](#privacy-and-usage-statistics)
 
 ---
 
@@ -135,7 +135,7 @@ Go to **Settings → Devices & Services → Add Integration** and search for **M
 | **TCP port** | The port the Modbus server listens on (1–65535) | `502` |
 | **Listen address** | IP address of this Home Assistant to listen on; empty = all interfaces | All |
 | **Allowed masters** | IP addresses or CIDR ranges that may connect, comma-separated (e.g. `192.168.1.10, 10.0.5.0/24`); empty = everyone | Everyone |
-| **Share usage statistics** | Sends a random installation ID every 6 hours; see [Privacy](#privacy-and-usage-statistics) | On |
+| **Share usage statistics** | Sends a random installation ID and the integration version every 6 hours; see [Privacy](#privacy-and-usage-statistics) | On |
 
 > **Port 502** is a privileged port. It works on Home Assistant OS and Supervised. On Container or Core installs running as non-root, pick a port ≥ 1024 (e.g. `5020`) or grant `CAP_NET_BIND_SERVICE`. Setup tells you when the port can't be opened.
 
@@ -305,10 +305,11 @@ What a report contains — everything, nothing else:
 
 | Field | Example | Meaning |
 |---|---|---|
-| `schema` | `1` | Report format version |
+| `schema` | `2` | Report format version |
 | `install_id` | `3f2b…` | A random ID created by this integration, only used to count installations. Not derived from your Home Assistant |
+| `integration_version` | `1.1.0` | Version of this integration, to know which versions are in use |
 
-**Never sent:** IP addresses, ports, slave IDs, entity IDs, mappings, register values, or anything about your Home Assistant setup. The server does not store your IP address; it adds only the country the report came from and the date it arrived, and keeps a marker that the installation is active, which expires within 8 hours of the latest report.
+**Never sent:** IP addresses, ports, slave IDs, entity IDs, mappings, register values, the Home Assistant version, or anything else about your Home Assistant setup. The server does not store your IP address; it adds only the country the report came from and the date it arrived, and keeps a marker that the installation is active, which expires within 8 hours of the latest report.
 
 The only thing that ever becomes public is totals: how many installations, and how many per country.
 
