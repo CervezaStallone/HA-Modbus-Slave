@@ -91,8 +91,9 @@ custom_components/modbus_slave/
 ├── manifest.json         # Integration metadata (version, dependencies)
 ├── config_flow.py        # Setup + reconfigure (slave ID, port) and options (mappings)
 ├── const.py              # Constants, defaults, bit/writable domain sets
+├── diagnostics.py        # Diagnostics download (listen address and allowlist redacted)
 ├── registers.py          # Pure logic, no HA imports: type detection, encode/decode, overlap
-├── server.py             # The only pymodbus module: context adapter, write-back, server start/stop
+├── server.py             # The only pymodbus module: context adapter, write-back, allowlist, server start/stop
 ├── strings.json          # Translatable UI strings (source)
 └── translations/
     ├── en.json           # English — must equal strings.json
@@ -101,7 +102,9 @@ custom_components/modbus_slave/
 tests/
 ├── test_registers.py     # Detection, encoding, overlap — milliseconds, no HA
 ├── test_config_flow.py   # Config, reconfigure and options flows
-└── test_server.py        # End-to-end: real HA + real Modbus TCP client
+├── test_server.py        # End-to-end: real HA + real Modbus TCP client
+├── test_diagnostics.py   # Diagnostics content and redaction
+└── test_translations.py  # en.json equals strings.json, nl.json has the same keys
 ```
 
 Keep `registers.py` free of Home Assistant imports and keep `server.py` the only module that imports `pymodbus`. pymodbus changes its server API between minor versions; this limits what a bump can break to one file.

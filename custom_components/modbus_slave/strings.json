@@ -6,19 +6,33 @@
         "description": "Home Assistant will answer Modbus TCP requests for this slave ID on this port.",
         "data": {
           "slave_id": "Slave ID",
-          "port": "TCP port"
+          "port": "TCP port",
+          "host": "Listen address",
+          "allowed_ips": "Allowed masters"
+        },
+        "data_description": {
+          "host": "IP address of this Home Assistant to listen on. Leave empty to listen on all interfaces.",
+          "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone."
         }
       },
       "reconfigure": {
         "title": "Server settings",
         "data": {
           "slave_id": "Slave ID",
-          "port": "TCP port"
+          "port": "TCP port",
+          "host": "Listen address",
+          "allowed_ips": "Allowed masters"
+        },
+        "data_description": {
+          "host": "IP address of this Home Assistant to listen on. Leave empty to listen on all interfaces.",
+          "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone."
         }
       }
     },
     "error": {
-      "port_in_use": "Port is in use or cannot be opened. Ports below 1024 need extra privileges on Container/Core installs; pick e.g. 5020."
+      "port_in_use": "Port is in use or the address cannot be opened. Ports below 1024 need extra privileges on Container/Core installs; pick e.g. 5020. The listen address must belong to this Home Assistant.",
+      "invalid_host": "Not a valid IP address.",
+      "invalid_allowed_ips": "Use IP addresses or ranges like 192.168.1.10 or 10.0.5.0/24, separated by commas."
     },
     "abort": {
       "already_configured": "This port is already used by another Modbus Slave entry.",

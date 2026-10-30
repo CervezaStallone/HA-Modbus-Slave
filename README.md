@@ -44,7 +44,9 @@ In plain terms: everything Home Assistant knows — sensors, switches, setpoints
 
 ## Features at a glance
 
-- **Two-field setup** — slave ID and port (default `502`), and Home Assistant answers Modbus TCP requests
+- **Simple setup** — slave ID and port (default `502`), and Home Assistant answers Modbus TCP requests
+- **Allowed masters** — optionally accept connections only from listed IP addresses or ranges; everyone else is disconnected immediately
+- **Listen address** — optionally bind to one interface (e.g. your PLC VLAN) instead of all
 - **Map any entity** — pick an entity and a start address; the register follows the entity's state
 - **Automatic data types** — on/off entities become a bit, numbers with a whole-number range become `uint16`/`int16`, everything else `float32`
 - **Override when needed** — `uint16`, `int16`, `uint32`, `int32`, `float32` or `scaled16` (value × 10/100/1000 in one register)
@@ -53,7 +55,8 @@ In plain terms: everything Home Assistant knows — sensors, switches, setpoints
 - **Real-time** — state changes are in the registers immediately, no polling
 - **Only answers its own slave ID** — requests for other unit IDs get no reply, like a real device behind a gateway
 - **Overlap protection** — a mapping can't overlap another one, including the second register of a 32-bit value
-- **Reconfigure** — change slave ID or port without re-adding the integration; mapping changes apply without restarting Home Assistant
+- **Reconfigure** — change slave ID, port, listen address or allowed masters without re-adding the integration; mapping changes apply without restarting Home Assistant
+- **Diagnostics** — a diagnostics download with every mapping, its entity state and the exact register values a master reads
 - **English and Dutch** user interface
 
 ---
@@ -66,7 +69,7 @@ What this integration lets a Modbus master do, so you know before connecting it 
 - **Limited to controllable domains** — *Writable* is only accepted on `switch`, `light`, `input_boolean` and `fan` (as a bit) and `number` and `input_number` (as a value). Sensors can never be written.
 - **Min/max are enforced** — a written value outside the entity's `min`/`max` is rejected with `ILLEGAL_VALUE`; nothing is sent to Home Assistant.
 - **No partial writes** — a write that covers only one word of a 32-bit value is rejected, so a master can't set half a float.
-- **No authentication** — Modbus TCP has none. Anyone who can reach the port can read every mapping and write every writable one. Keep the port on a trusted network or VLAN, firewall it to your master's IP, and never forward it to the internet. See [SECURITY.md](SECURITY.md).
+- **No authentication in the protocol** — Modbus TCP has none. Without an allowlist, anyone who can reach the port can read every mapping and write every writable one. Fill in **Allowed masters** with your master's IP address, keep the port on a trusted network or VLAN, and never forward it to the internet. See [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -94,12 +97,14 @@ Copy the `custom_components/modbus_slave` folder into your Home Assistant `confi
 
 Go to **Settings → Devices & Services → Add Integration** and search for **Modbus Slave**.
 
-### 2. Set slave ID and port
+### 2. Set up the server
 
 | Setting | What it does | Default |
 |---|---|---|
 | **Slave ID** | The unit ID Home Assistant answers to (1–247) | `1` |
 | **TCP port** | The port the Modbus server listens on (1–65535) | `502` |
+| **Listen address** | IP address of this Home Assistant to listen on; empty = all interfaces | All |
+| **Allowed masters** | IP addresses or CIDR ranges that may connect, comma-separated (e.g. `192.168.1.10, 10.0.5.0/24`); empty = everyone | Everyone |
 
 > **Port 502** is a privileged port. It works on Home Assistant OS and Supervised. On Container or Core installs running as non-root, pick a port ≥ 1024 (e.g. `5020`) or grant `CAP_NET_BIND_SERVICE`. Setup tells you when the port can't be opened.
 
@@ -134,7 +139,7 @@ Changes apply immediately — the integration reloads itself; Home Assistant doe
 
 ### Reconfigure
 
-To change the slave ID or port: **Settings → Devices & Services → Modbus Slave → ⋮ → Reconfigure**. Mappings are kept.
+To change the slave ID, port, listen address or allowed masters: **Settings → Devices & Services → Modbus Slave → ⋮ → Reconfigure**. Mappings are kept.
 
 ---
 
@@ -234,6 +239,7 @@ The PLC writes `655` to holding register 200 (FC6) → the setpoint becomes `65.
 |---|---|---|
 | "Port is in use or cannot be opened" | Another program uses the port, or the port is below 1024 on a non-root install | Stop the other program, or use a port ≥ 1024 (e.g. `5020`) |
 | Master gets a timeout | Wrong slave ID, firewall, or wrong port | Check the slave ID on the integration card; the integration doesn't answer other unit IDs |
+| Master connects but is disconnected immediately | Its IP is not in **Allowed masters** | The log shows `Rejected Modbus connection from …`; add that address in **Reconfigure** |
 | Value reads as `0` | Entity is `unavailable`, address not mapped, or off-by-one addressing | Check the entity state, and whether your tool counts addresses from 1 |
 | Float value looks like garbage | Master uses low word first | Set the master to big-endian / high word first (ABCD) |
 | Value is stuck at a maximum | Value is clamped to the type's range | Use a larger type (`float32`, `int32`) or a smaller `scaled16` scale |
@@ -251,6 +257,10 @@ logger:
     custom_components.modbus_slave: debug
     pymodbus: debug
 ```
+
+### Diagnostics download
+
+When reporting a problem, attach the diagnostics file: **Settings → Devices & Services → Modbus Slave → ⋮ → Download diagnostics**. It contains every mapping with its entity state and the register values a master reads. The listen address and allowed masters are redacted.
 
 ---
 
