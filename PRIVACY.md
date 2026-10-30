@@ -2,7 +2,7 @@
 
 **[English](#english)** · **[Nederlands](#nederlands)**
 
-Last updated: 30 October 2026. Applies to the usage statistics (on by default, opt-out), available from version 1.0.0.
+Last updated: 30 October 2026. Applies to the usage statistics (on by default, opt-out), available from version 1.0.0; the integration version is sent from version 1.1.0.
 
 ---
 
@@ -10,7 +10,7 @@ Last updated: 30 October 2026. Applies to the usage statistics (on by default, o
 
 ### In short
 
-The integration only sends data while **Share usage statistics** is ticked. It is ticked by default when you add the integration, and you can untick it on that same page or later with **Reconfigure**. When it is on, Home Assistant sends a tiny report every 6 hours that contains nothing but a random installation ID. It is used only to count how many installations are active and in which countries. Nothing about Modbus, your entities, your network or your Home Assistant is sent.
+The integration only sends data while **Share usage statistics** is ticked. It is ticked by default when you add the integration, and you can untick it on that same page or later with **Reconfigure**. When it is on, Home Assistant sends a tiny report every 6 hours that contains a random installation ID and the version number of this integration. It is used only to count how many installations are active, in which countries and on which versions. Nothing about Modbus, your entities, your network or your Home Assistant is sent.
 
 ### Who is responsible
 
@@ -22,10 +22,11 @@ While at least one Modbus Slave entry has the option ticked, one report every 6 
 
 | Field | Example | Meaning |
 |---|---|---|
-| `schema` | `1` | Report format version |
+| `schema` | `2` | Report format version |
 | `install_id` | `3f2b…` | A random ID the integration creates once. Not derived from your Home Assistant or your network |
+| `integration_version` | `1.1.0` | Version of this integration, to know which versions are in use |
 
-**Never sent:** IP addresses, ports, slave IDs, entity IDs, mappings, register values, versions, or anything else about your Home Assistant setup.
+**Never sent:** IP addresses, ports, slave IDs, entity IDs, mappings, register values, the Home Assistant version, or anything else about your Home Assistant setup.
 
 ### What the server adds
 
@@ -69,7 +70,7 @@ Changes to this policy are made in this file and are visible in its history on G
 
 ### In het kort
 
-De integratie stuurt alleen gegevens zolang **Gebruiksstatistieken delen** is aangevinkt. Bij het toevoegen van de integratie staat het standaard aan; je kunt het op die pagina uitvinken, of later via **Opnieuw configureren**. Staat het aan, dan stuurt Home Assistant elke 6 uur een heel klein rapport met niets anders dan een willekeurige installatie-ID. Dat wordt alleen gebruikt om te tellen hoeveel installaties actief zijn en in welke landen. Er wordt niets verstuurd over Modbus, je entities, je netwerk of je Home Assistant.
+De integratie stuurt alleen gegevens zolang **Gebruiksstatistieken delen** is aangevinkt. Bij het toevoegen van de integratie staat het standaard aan; je kunt het op die pagina uitvinken, of later via **Opnieuw configureren**. Staat het aan, dan stuurt Home Assistant elke 6 uur een heel klein rapport met een willekeurige installatie-ID en het versienummer van deze integratie. Dat wordt alleen gebruikt om te tellen hoeveel installaties actief zijn, in welke landen en op welke versies. Er wordt niets verstuurd over Modbus, je entities, je netwerk of je Home Assistant.
 
 ### Wie is verantwoordelijk
 
@@ -81,10 +82,11 @@ Zolang bij minstens één Modbus Slave-entry de optie aan staat, gaat er elke 6 
 
 | Veld | Voorbeeld | Betekenis |
 |---|---|---|
-| `schema` | `1` | Versie van het rapportformaat |
+| `schema` | `2` | Versie van het rapportformaat |
 | `install_id` | `3f2b…` | Een willekeurige ID die de integratie één keer aanmaakt. Niet afgeleid van je Home Assistant of je netwerk |
+| `integration_version` | `1.1.0` | Versie van deze integratie, om te weten welke versies in gebruik zijn |
 
-**Nooit verstuurd:** IP-adressen, poorten, slave-ID's, entity-ID's, mappings, registerwaarden, versies, of iets anders over je Home Assistant-installatie.
+**Nooit verstuurd:** IP-adressen, poorten, slave-ID's, entity-ID's, mappings, registerwaarden, de Home Assistant-versie, of iets anders over je Home Assistant-installatie.
 
 ### Wat de server toevoegt
 
