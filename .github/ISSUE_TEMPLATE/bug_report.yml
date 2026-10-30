@@ -22,7 +22,7 @@ body:
     attributes:
       label: Modbus Slave integration version
       description: HACS → Modbus Slave → installed version (or the release tag / commit if installed manually)
-      placeholder: "1.0.0"
+      placeholder: "1.1.0"
     validations:
       required: true
 

@@ -3,9 +3,9 @@
 Opt-out: "share usage" is on unless the user unticks it. While at least one
 config entry has it on, one report per
 Home Assistant installation goes to the telemetry server. It holds only a
-random installation ID, so the server can count active installations; the
-server looks up the country itself. Nothing about Modbus, entities or the
-network is sent.
+random installation ID and the integration version, so the server can count
+active installations and versions; the server looks up the country itself.
+Nothing about Modbus, entities, the network or Home Assistant is sent.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
+from homeassistant.loader import async_get_integration
 
 from .const import (
     CONF_SHARE_USAGE,
@@ -34,9 +35,13 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def build_report(install_id: str) -> dict:
-    """The report the server accepts: exactly these keys, nothing else."""
-    return {"schema": TELEMETRY_SCHEMA, "install_id": install_id.lower()}
+def build_report(install_id: str, integration_version: str) -> dict:
+    """The random installation ID and the integration version: exactly these keys."""
+    return {
+        "schema": TELEMETRY_SCHEMA,
+        "install_id": install_id.lower(),
+        "integration_version": integration_version,
+    }
 
 
 class TelemetryReporter:
@@ -63,9 +68,10 @@ class TelemetryReporter:
         if not any(e.data.get(CONF_SHARE_USAGE, True) for e in entries):
             return
         try:
+            integration = await async_get_integration(self._hass, DOMAIN)
             async with async_get_clientsession(self._hass).post(
                 TELEMETRY_URL,
-                json=build_report(await self.async_install_id()),
+                json=build_report(await self.async_install_id(), str(integration.version)),
                 timeout=aiohttp.ClientTimeout(total=TELEMETRY_TIMEOUT),
             ) as response:
                 if response.status >= 300:
