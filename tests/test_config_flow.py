@@ -20,7 +20,13 @@ async def test_user_creates_entry(hass, free_port):
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == f"Modbus Slave (port {free_port}, ID 3)"
-    assert result["data"] == {"slave_id": 3, "port": free_port}
+    assert result["data"] == {
+        "slave_id": 3,
+        "port": free_port,
+        "host": "",
+        "allowed_ips": [],
+        "share_usage": True,
+    }
 
 
 async def test_user_defaults(hass):
@@ -28,7 +34,13 @@ async def test_user_defaults(hass):
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     defaults = {str(k): k.default() for k in result["data_schema"].schema}
-    assert defaults == {"slave_id": 1, "port": 502}
+    assert defaults == {
+        "slave_id": 1,
+        "port": 502,
+        "host": "",
+        "allowed_ips": "",
+        "share_usage": True,
+    }
 
 
 @pytest.mark.parametrize(
@@ -97,7 +109,13 @@ async def test_reconfigure_changes_port(hass, free_port):
     )
     await hass.async_block_till_done()
     assert result["reason"] == "reconfigure_successful"
-    assert entry.data == {"slave_id": 9, "port": new_port}
+    assert entry.data == {
+        "slave_id": 9,
+        "port": new_port,
+        "host": "",
+        "allowed_ips": [],
+        "share_usage": False,
+    }
     assert entry.unique_id == str(new_port)
     # old port is free again, new port is held by the reloaded server
     blocker = await asyncio.start_server(lambda _r, _w: None, port=free_port)
@@ -243,3 +261,53 @@ async def test_edit_and_remove(hass, free_port):
     )
     await hass.async_block_till_done()
     assert [m["entity_id"] for m in entry.options["mappings"]] == ["sensor.a"]
+
+
+async def test_user_host_and_allowlist(hass, free_port):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            "slave_id": 1,
+            "port": free_port,
+            "host": "127.0.0.1",
+            "allowed_ips": "10.0.0.5, 10.1.0.0/16",
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"]["host"] == "127.0.0.1"
+    assert result["data"]["allowed_ips"] == ["10.0.0.5/32", "10.1.0.0/16"]
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "error"),
+    [
+        ("host", "not-an-ip", "invalid_host"),
+        ("allowed_ips", "10.0.0.5, nope", "invalid_allowed_ips"),
+        ("host", "203.0.113.7", "port_in_use"),  # not an address of this machine
+    ],
+)
+async def test_user_invalid_server_settings(hass, free_port, field, value, error):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 1, "port": free_port, field: value}
+    )
+    assert result["errors"] == {"base": error}
+
+
+async def test_reconfigure_shows_current_allowlist(hass, free_port):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=str(free_port),
+        data={"slave_id": 1, "port": free_port, "host": "", "allowed_ips": ["10.0.0.5/32"]},
+        options={"mappings": []},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    result = await entry.start_reconfigure_flow(hass)
+    defaults = {str(k): k.default() for k in result["data_schema"].schema}
+    assert defaults["allowed_ips"] == "10.0.0.5/32"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import math
 
@@ -11,6 +12,7 @@ from pymodbus.constants import ExcCodes
 from pymodbus.datastore import ModbusServerContext
 from pymodbus.exceptions import NoSuchIdException
 from pymodbus.server import ModbusTcpServer
+from pymodbus.server.requesthandler import ServerRequestHandler
 
 from .registers import RegisterTable, decode
 
@@ -95,12 +97,59 @@ class HAContext(ModbusServerContext):
         return None
 
 
-async def start_server(context: HAContext, port: int) -> ModbusTcpServer:
-    """Start listening; raises RuntimeError if the port cannot be bound."""
-    server = ModbusTcpServer(context, address=("", port), ignore_missing_devices=True)
+def parse_networks(text: str) -> list[str]:
+    """Parse comma or space separated IPs / CIDR ranges. Raises ValueError."""
+    return [
+        str(ipaddress.ip_network(part, strict=False)) for part in text.replace(",", " ").split()
+    ]
+
+
+class _FilteredHandler(ServerRequestHandler):
+    """Closes connections from masters that are not on the allowlist."""
+
+    def connection_made(self, transport) -> None:
+        super().connection_made(transport)
+        peer = transport.get_extra_info("peername")
+        if peer and not self.server.peer_allowed(peer[0]):
+            transport.abort()
+
+
+class HAModbusServer(ModbusTcpServer):
+    """Modbus TCP server with an optional IP allowlist."""
+
+    def __init__(self, context: HAContext, host: str, port: int, allowed: list[str]) -> None:
+        super().__init__(context, address=(host, port), ignore_missing_devices=True)
+        self._allowed = [ipaddress.ip_network(net) for net in allowed]
+        self._rejected: set[str] = set()
+
+    def peer_allowed(self, host: str) -> bool:
+        if not self._allowed:
+            return True
+        ip = ipaddress.ip_address(host.split("%", 1)[0])
+        ip = getattr(ip, "ipv4_mapped", None) or ip  # dual-stack socket reports ::ffff:a.b.c.d
+        if any(ip in net for net in self._allowed):
+            return True
+        if host not in self._rejected:  # warn once per address, a scanner must not flood the log
+            self._rejected.add(host)
+            _LOGGER.warning("Rejected Modbus connection from %s: not in the allowed list", host)
+        return False
+
+    def callback_new_connection(self) -> ServerRequestHandler:
+        return _FilteredHandler(self, self.trace_packet, self.trace_pdu, self.trace_connect)
+
+    @property
+    def connected_masters(self) -> int:
+        return len(self.active_connections)
+
+
+async def start_server(
+    context: HAContext, host: str, port: int, allowed: list[str]
+) -> HAModbusServer:
+    """Start listening; raises RuntimeError if the address cannot be bound."""
+    server = HAModbusServer(context, host, port, allowed)
     await server.serve_forever(background=True)
     return server
 
 
-async def stop_server(server: ModbusTcpServer) -> None:
+async def stop_server(server: HAModbusServer) -> None:
     await server.shutdown()

@@ -6,19 +6,37 @@
         "description": "Home Assistant beantwoordt Modbus TCP-verzoeken voor dit slave ID op deze poort.",
         "data": {
           "slave_id": "Slave ID",
-          "port": "TCP-poort"
+          "port": "TCP-poort",
+          "host": "Luisteradres",
+          "allowed_ips": "Toegestane masters",
+          "share_usage": "Gebruiksstatistieken delen"
+        },
+        "data_description": {
+          "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
+          "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
+          "share_usage": "Standaard aangevinkt; vink uit om niets te versturen. Stuurt elke 6 uur alleen een willekeurige installatie-ID, zodat het aantal actieve installaties geteld kan worden; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({privacy_url})"
         }
       },
       "reconfigure": {
         "title": "Serverinstellingen",
         "data": {
           "slave_id": "Slave ID",
-          "port": "TCP-poort"
+          "port": "TCP-poort",
+          "host": "Luisteradres",
+          "allowed_ips": "Toegestane masters",
+          "share_usage": "Gebruiksstatistieken delen"
+        },
+        "data_description": {
+          "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
+          "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
+          "share_usage": "Standaard aangevinkt; vink uit om niets te versturen. Stuurt elke 6 uur alleen een willekeurige installatie-ID, zodat het aantal actieve installaties geteld kan worden; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({privacy_url})"
         }
       }
     },
     "error": {
-      "port_in_use": "Poort is bezet of kan niet worden geopend. Poorten onder 1024 vereisen extra rechten op Container/Core-installaties; kies bijv. 5020."
+      "port_in_use": "Poort is bezet of het adres kan niet worden geopend. Poorten onder 1024 vereisen extra rechten op Container/Core-installaties; kies bijv. 5020. Het luisteradres moet van deze Home Assistant zijn.",
+      "invalid_host": "Geen geldig IP-adres.",
+      "invalid_allowed_ips": "Gebruik IP-adressen of bereiken zoals 192.168.1.10 of 10.0.5.0/24, gescheiden door komma's."
     },
     "abort": {
       "already_configured": "Deze poort wordt al gebruikt door een andere Modbus Slave-entry.",

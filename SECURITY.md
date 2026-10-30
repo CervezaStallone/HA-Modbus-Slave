@@ -48,6 +48,7 @@ The following are considered **in scope** for security reports:
 
 - **Unauthorized write access**: Logic flaws that let a Modbus master write to a mapping that is not marked writable, to an entity outside the writable domains, or with a value outside the entity's min/max
 - **Wrong slave ID handling**: Requests for another unit ID being answered or acted upon
+- **Allowlist bypass**: A master outside the allowed masters being able to read or write anything
 - **Injection vulnerabilities**: Crafted Modbus frames that cause unsafe behaviour in Home Assistant (e.g. calling services other than the intended ones)
 - **Denial of service**: Issues that cause Home Assistant to crash, block the event loop or become unresponsive via malformed or excessive Modbus traffic
 - **Information exposure**: Entity data being served that the user did not map
@@ -66,7 +67,9 @@ The following are **out of scope**:
 When deploying this integration, we recommend the following:
 
 - **Network isolation**: Keep the Modbus port on a dedicated VLAN with only the Modbus master(s), isolated from the general network and the internet.
-- **Firewall rules**: Restrict the configured TCP port (default 502) to the IP addresses of your Modbus master(s). Never forward it to the internet.
+- **Allowed masters**: Fill in the IP address of your Modbus master(s) in the integration settings. Connections from any other address are closed before a single request is handled.
+- **Listen address**: Bind the server to the interface your master uses, so it isn't reachable from other networks Home Assistant is connected to.
+- **Firewall rules**: Restrict the configured TCP port (default 502) to the IP addresses of your Modbus master(s) on the network level too. Never forward it to the internet.
 - **Least privilege**: Leave mappings read-only unless the master really needs to control the entity. Writable is off by default.
 - **Map only what's needed**: Every mapped entity is readable by anyone who can reach the port.
 - **Home Assistant security**: Keep Home Assistant updated and enable two-factor authentication on your account.

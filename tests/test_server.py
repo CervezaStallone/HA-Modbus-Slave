@@ -21,11 +21,11 @@ def f32(value: float) -> list[int]:
     return list(struct.unpack(">HH", struct.pack(">f", value)))
 
 
-async def setup(hass, port, mappings=(), slave_id=1):
+async def setup(hass, port, mappings=(), slave_id=1, **data):
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id=str(port),
-        data={"slave_id": slave_id, "port": port},
+        data={"slave_id": slave_id, "port": port, **data},
         options={"mappings": list(mappings)},
     )
     entry.add_to_hass(hass)
@@ -196,3 +196,24 @@ async def test_many_mappings_and_clients(hass, free_port, client):
     )
     assert time.monotonic() - start < 1
     assert all(r.registers[2:4] == f32(1) for r in results)
+
+
+async def test_allowlist_rejects_other_masters(hass, free_port, client, caplog):
+    await setup(hass, free_port, allowed_ips=["10.0.0.5/32"])
+    c = await client()
+    with pytest.raises(ModbusException):
+        await c.read_holding_registers(0, count=1, device_id=1)
+    assert "Rejected Modbus connection from 127.0.0.1" in caplog.text
+
+
+async def test_allowlist_accepts_listed_master(hass, free_port, client):
+    await setup(hass, free_port, allowed_ips=["10.0.0.5/32", "127.0.0.0/8"])
+    c = await client()
+    assert (await c.read_holding_registers(0, count=1, device_id=1)).registers == [0]
+
+
+async def test_listen_address(hass, free_port, client):
+    entry = await setup(hass, free_port, host="127.0.0.1")
+    c = await client()
+    assert (await c.read_holding_registers(0, count=1, device_id=1)).registers == [0]
+    assert entry.runtime_data.server.connected_masters == 1
