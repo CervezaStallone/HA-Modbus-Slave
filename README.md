@@ -30,7 +30,7 @@
 > <a href="https://github.com/sponsors/CervezaStallone"><img src="https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub" height="32"></a>
 > <a href="https://buymeacoffee.com/cervezastallone"><img src="https://img.shields.io/badge/Buy_me_a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me A Coffee" height="32"></a>
 
-**Contents:** [What it does](#what-does-this-integration-do) · [Features](#features-at-a-glance) · [Safety](#safety-on-a-live-site) · [Installation](#installation) · [Getting started](#getting-started) · [Configuration](#configuration-options) · [Data types](#data-types) · [Address spaces](#address-spaces) · [How writes work](#how-writes-work) · [Examples](#examples) · [Troubleshooting](#troubleshooting) · [Requirements](#requirements) · [Contributing](#contributing) · [License](#license)
+**Contents:** [What it does](#what-does-this-integration-do) · [Features](#features-at-a-glance) · [Safety](#safety-on-a-live-site) · [Installation](#installation) · [Getting started](#getting-started) · [Configuration](#configuration-options) · [Data types](#data-types) · [Address spaces](#address-spaces) · [How writes work](#how-writes-work) · [Examples](#examples) · [Troubleshooting](#troubleshooting) · [Privacy](#privacy-and-usage-statistics) · [Requirements](#requirements) · [Contributing](#contributing) · [License](#license)
 
 ## What does this integration do?
 
@@ -58,6 +58,7 @@ In plain terms: everything Home Assistant knows — sensors, switches, setpoints
 - **Reconfigure** — change slave ID, port, listen address or allowed masters without re-adding the integration; mapping changes apply without restarting Home Assistant
 - **Diagnostics** — a diagnostics download with every mapping, its entity state and the exact register values a master reads
 - **English and Dutch** user interface
+- **Usage statistics** — ticked by default on the setup page; sends only a random installation ID to count active installations. See [Privacy and usage statistics](#privacy-and-usage-statistics)
 
 ---
 
@@ -105,6 +106,7 @@ Go to **Settings → Devices & Services → Add Integration** and search for **M
 | **TCP port** | The port the Modbus server listens on (1–65535) | `502` |
 | **Listen address** | IP address of this Home Assistant to listen on; empty = all interfaces | All |
 | **Allowed masters** | IP addresses or CIDR ranges that may connect, comma-separated (e.g. `192.168.1.10, 10.0.5.0/24`); empty = everyone | Everyone |
+| **Share usage statistics** | Sends a random installation ID every 6 hours; see [Privacy](#privacy-and-usage-statistics) | On |
 
 > **Port 502** is a privileged port. It works on Home Assistant OS and Supervised. On Container or Core installs running as non-root, pick a port ≥ 1024 (e.g. `5020`) or grant `CAP_NET_BIND_SERVICE`. Setup tells you when the port can't be opened.
 
@@ -139,7 +141,7 @@ Changes apply immediately — the integration reloads itself; Home Assistant doe
 
 ### Reconfigure
 
-To change the slave ID, port, listen address or allowed masters: **Settings → Devices & Services → Modbus Slave → ⋮ → Reconfigure**. Mappings are kept.
+To change the slave ID, port, listen address, allowed masters or usage statistics: **Settings → Devices & Services → Modbus Slave → ⋮ → Reconfigure**. Mappings are kept.
 
 ---
 
@@ -261,6 +263,27 @@ logger:
 ### Diagnostics download
 
 When reporting a problem, attach the diagnostics file: **Settings → Devices & Services → Modbus Slave → ⋮ → Download diagnostics**. It contains every mapping with its entity state and the register values a master reads. The listen address and allowed masters are redacted.
+
+---
+
+## Privacy and usage statistics
+
+The integration can send usage statistics. **Share usage statistics** is ticked by default on the setup page; untick it there, or later with **Reconfigure**, to send nothing.
+
+While at least one entry has it ticked, Home Assistant sends one report every 6 hours (the first about 10 minutes after start) to a server run by the maintainer, on servers in the EU. The full [privacy policy](PRIVACY.md) (English and Nederlands) explains what is collected, why, how long it is kept and how to have it deleted; it is also linked under the checkbox.
+
+What a report contains — everything, nothing else:
+
+| Field | Example | Meaning |
+|---|---|---|
+| `schema` | `1` | Report format version |
+| `install_id` | `3f2b…` | A random ID created by this integration, only used to count installations. Not derived from your Home Assistant |
+
+**Never sent:** IP addresses, ports, slave IDs, entity IDs, mappings, register values, or anything about your Home Assistant setup. The server does not store your IP address; it adds only the country the report came from and the date it arrived, and keeps a marker that the installation is active, which expires within 8 hours of the latest report.
+
+The only thing that ever becomes public is totals: how many installations, and how many per country.
+
+To stop: untick the option with **Reconfigure** on each entry. A failed report is never retried and never shows up in your log (only at debug level).
 
 ---
 

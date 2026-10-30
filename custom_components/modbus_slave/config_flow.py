@@ -28,10 +28,12 @@ from .const import (
     CONF_HOST,
     CONF_MAPPINGS,
     CONF_PORT,
+    CONF_SHARE_USAGE,
     CONF_SLAVE_ID,
     DEFAULT_PORT,
     DEFAULT_SLAVE_ID,
     DOMAIN,
+    PRIVACY_URL,
     REG_WRITABLE_DOMAINS,
 )
 from .registers import DataType, Mapping, detect, find_overlap
@@ -51,6 +53,9 @@ def _server_schema(data: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_ALLOWED_IPS, default=", ".join(data.get(CONF_ALLOWED_IPS, []))
             ): TextSelector(),
+            vol.Optional(
+                CONF_SHARE_USAGE, default=data.get(CONF_SHARE_USAGE, False)
+            ): BooleanSelector(),
         }
     )
 
@@ -72,6 +77,7 @@ def _parse_server(user_input: dict[str, Any]) -> tuple[dict[str, Any], str | Non
         CONF_PORT: int(user_input[CONF_PORT]),
         CONF_HOST: host,
         CONF_ALLOWED_IPS: allowed,
+        CONF_SHARE_USAGE: bool(user_input.get(CONF_SHARE_USAGE, False)),
     }, None
 
 
@@ -118,8 +124,14 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=_server_schema(
-                user_input or {CONF_SLAVE_ID: DEFAULT_SLAVE_ID, CONF_PORT: DEFAULT_PORT}
+                user_input
+                or {
+                    CONF_SLAVE_ID: DEFAULT_SLAVE_ID,
+                    CONF_PORT: DEFAULT_PORT,
+                    CONF_SHARE_USAGE: True,
+                }
             ),
+            description_placeholders={"privacy_url": PRIVACY_URL},
             errors=errors,
         )
 
@@ -147,6 +159,7 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=_server_schema(user_input or entry.data),
+            description_placeholders={"privacy_url": PRIVACY_URL},
             errors=errors,
         )
 

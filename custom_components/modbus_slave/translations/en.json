@@ -8,11 +8,13 @@
           "slave_id": "Slave ID",
           "port": "TCP port",
           "host": "Listen address",
-          "allowed_ips": "Allowed masters"
+          "allowed_ips": "Allowed masters",
+          "share_usage": "Share usage statistics"
         },
         "data_description": {
           "host": "IP address of this Home Assistant to listen on. Leave empty to listen on all interfaces.",
-          "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone."
+          "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone.",
+          "share_usage": "Ticked by default; untick to send nothing. Every 6 hours, sends only a random installation ID so the number of active installations can be counted; the server adds the country. Never addresses, entities, mappings or values. [Privacy policy]({privacy_url})"
         }
       },
       "reconfigure": {
@@ -21,11 +23,13 @@
           "slave_id": "Slave ID",
           "port": "TCP port",
           "host": "Listen address",
-          "allowed_ips": "Allowed masters"
+          "allowed_ips": "Allowed masters",
+          "share_usage": "Share usage statistics"
         },
         "data_description": {
           "host": "IP address of this Home Assistant to listen on. Leave empty to listen on all interfaces.",
-          "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone."
+          "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone.",
+          "share_usage": "Ticked by default; untick to send nothing. Every 6 hours, sends only a random installation ID so the number of active installations can be counted; the server adds the country. Never addresses, entities, mappings or values. [Privacy policy]({privacy_url})"
         }
       }
     },

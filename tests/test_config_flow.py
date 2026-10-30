@@ -20,7 +20,13 @@ async def test_user_creates_entry(hass, free_port):
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == f"Modbus Slave (port {free_port}, ID 3)"
-    assert result["data"] == {"slave_id": 3, "port": free_port, "host": "", "allowed_ips": []}
+    assert result["data"] == {
+        "slave_id": 3,
+        "port": free_port,
+        "host": "",
+        "allowed_ips": [],
+        "share_usage": True,
+    }
 
 
 async def test_user_defaults(hass):
@@ -28,7 +34,13 @@ async def test_user_defaults(hass):
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     defaults = {str(k): k.default() for k in result["data_schema"].schema}
-    assert defaults == {"slave_id": 1, "port": 502, "host": "", "allowed_ips": ""}
+    assert defaults == {
+        "slave_id": 1,
+        "port": 502,
+        "host": "",
+        "allowed_ips": "",
+        "share_usage": True,
+    }
 
 
 @pytest.mark.parametrize(
@@ -97,7 +109,13 @@ async def test_reconfigure_changes_port(hass, free_port):
     )
     await hass.async_block_till_done()
     assert result["reason"] == "reconfigure_successful"
-    assert entry.data == {"slave_id": 9, "port": new_port, "host": "", "allowed_ips": []}
+    assert entry.data == {
+        "slave_id": 9,
+        "port": new_port,
+        "host": "",
+        "allowed_ips": [],
+        "share_usage": False,
+    }
     assert entry.unique_id == str(new_port)
     # old port is free again, new port is held by the reloaded server
     blocker = await asyncio.start_server(lambda _r, _w: None, port=free_port)

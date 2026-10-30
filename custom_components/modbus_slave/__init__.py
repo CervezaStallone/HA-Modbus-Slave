@@ -8,19 +8,31 @@ from dataclasses import dataclass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import async_track_state_change_event
 
-from .const import CONF_ALLOWED_IPS, CONF_HOST, CONF_MAPPINGS, CONF_PORT, CONF_SLAVE_ID
+from .const import CONF_ALLOWED_IPS, CONF_HOST, CONF_MAPPINGS, CONF_PORT, CONF_SLAVE_ID, DOMAIN
 from .registers import Mapping, RegisterTable, encode
 from .server import HAContext, HAModbusServer, start_server, stop_server
+from .telemetry import TelemetryReporter
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 @dataclass
 class RuntimeData:
     server: HAModbusServer
     table: RegisterTable
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Start the usage reporter once; it sends nothing unless an entry opted in."""
+    reporter = TelemetryReporter(hass)
+    reporter.async_start()
+    hass.data[DOMAIN] = reporter
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

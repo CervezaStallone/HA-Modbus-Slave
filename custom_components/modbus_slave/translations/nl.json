@@ -8,11 +8,13 @@
           "slave_id": "Slave ID",
           "port": "TCP-poort",
           "host": "Luisteradres",
-          "allowed_ips": "Toegestane masters"
+          "allowed_ips": "Toegestane masters",
+          "share_usage": "Gebruiksstatistieken delen"
         },
         "data_description": {
           "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
-          "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen."
+          "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
+          "share_usage": "Standaard aangevinkt; vink uit om niets te versturen. Stuurt elke 6 uur alleen een willekeurige installatie-ID, zodat het aantal actieve installaties geteld kan worden; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({privacy_url})"
         }
       },
       "reconfigure": {
@@ -21,11 +23,13 @@
           "slave_id": "Slave ID",
           "port": "TCP-poort",
           "host": "Luisteradres",
-          "allowed_ips": "Toegestane masters"
+          "allowed_ips": "Toegestane masters",
+          "share_usage": "Gebruiksstatistieken delen"
         },
         "data_description": {
           "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
-          "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen."
+          "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
+          "share_usage": "Standaard aangevinkt; vink uit om niets te versturen. Stuurt elke 6 uur alleen een willekeurige installatie-ID, zodat het aantal actieve installaties geteld kan worden; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({privacy_url})"
         }
       }
     },
