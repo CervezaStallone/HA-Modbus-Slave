@@ -71,6 +71,7 @@ What this integration lets a Modbus master do, so you know before connecting it 
 - **Min/max are enforced** — a written value outside the entity's `min`/`max` is rejected with `ILLEGAL_VALUE`; nothing is sent to Home Assistant.
 - **No partial writes** — a write that covers only one word of a 32-bit value is rejected, so a master can't set half a float.
 - **No authentication in the protocol** — Modbus TCP has none. Without an allowlist, anyone who can reach the port can read every mapping and write every writable one. Fill in **Allowed masters** with your master's IP address, keep the port on a trusted network or VLAN, and never forward it to the internet. See [SECURITY.md](SECURITY.md).
+- **Not for life-safety systems** — don't map or make writable anything that belongs to fire alarm, smoke control or other life-safety systems. You are responsible for what a master writes to a running building; test with a single mapping first.
 
 ---
 
@@ -338,6 +339,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and coding stan
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE) for details.
+
+pymodbus, installed by Home Assistant from PyPI, is BSD-3-Clause-licensed. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Modbus® is a registered trademark of Schneider Electric, licensed to the Modbus Organization. Home Assistant is a trademark of the Open Home Foundation. This is an independent open-source integration. It is not affiliated with, endorsed by or certified by the Modbus Organization, Schneider Electric or the Open Home Foundation, and it is not an official Home Assistant integration.
+
+The software is provided as is, without any warranty (see [LICENSE](LICENSE)). Use it at your own risk; to the extent permitted by law, BRDC is not liable for any damage caused by its use, including damage to installations or equipment.
 
 ---
 
