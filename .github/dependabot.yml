@@ -1,10 +1,11 @@
 version: 2
 updates:
-  - package-ecosystem: github-actions
-    directory: /
+  # Only GitHub Actions versions (actions/checkout, setup-python, etc.) —
+  # not a Python ecosystem entry: the pymodbus requirement lives in
+  # custom_components/modbus_slave/manifest.json, which Dependabot doesn't
+  # understand, and requirements_test.txt pins pymodbus to the version Home
+  # Assistant core ships on purpose.
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-  - package-ecosystem: pip
-    directory: /
-    schedule:
-      interval: weekly
+      interval: "weekly"
