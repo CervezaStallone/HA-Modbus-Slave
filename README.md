@@ -30,7 +30,7 @@
 > <a href="https://github.com/sponsors/CervezaStallone"><img src="https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub" height="32"></a>
 > <a href="https://buymeacoffee.com/cervezastallone"><img src="https://img.shields.io/badge/Buy_me_a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me A Coffee" height="32"></a>
 
-**Contents:** [What it does](#what-does-this-integration-do) · [Features](#features-at-a-glance) · [Safety](#safety-on-a-live-site) · [Installation](#installation) · [Getting started](#getting-started) · [Configuration](#configuration-options) · [Data types](#data-types) · [Address spaces](#address-spaces) · [How writes work](#how-writes-work) · [Examples](#examples) · [Troubleshooting](#troubleshooting) · [Privacy](#privacy-and-usage-statistics) · [Requirements](#requirements) · [Contributing](#contributing) · [License](#license)
+**Contents:** [What it does](#what-does-this-integration-do) · [Features](#features-at-a-glance) · [Safety](#safety-on-a-live-site) · [Screenshots](#screenshots) · [Installation](#installation) · [Getting started](#getting-started) · [Configuration](#configuration-options) · [Data types](#data-types) · [Address spaces](#address-spaces) · [How writes work](#how-writes-work) · [Examples](#examples) · [Troubleshooting](#troubleshooting) · [Privacy](#privacy-and-usage-statistics) · [Requirements](#requirements) · [Contributing](#contributing) · [License](#license)
 
 ## What does this integration do?
 
@@ -71,6 +71,35 @@ What this integration lets a Modbus master do, so you know before connecting it 
 - **Min/max are enforced** — a written value outside the entity's `min`/`max` is rejected with `ILLEGAL_VALUE`; nothing is sent to Home Assistant.
 - **No partial writes** — a write that covers only one word of a 32-bit value is rejected, so a master can't set half a float.
 - **No authentication in the protocol** — Modbus TCP has none. Without an allowlist, anyone who can reach the port can read every mapping and write every writable one. Fill in **Allowed masters** with your master's IP address, keep the port on a trusted network or VLAN, and never forward it to the internet. See [SECURITY.md](SECURITY.md).
+
+---
+
+## Screenshots
+
+*Demo: values from a P1 smart meter (power, energy, current) mapped to registers and read with [modpoll](https://www.modbusdriver.com/modpoll.html).*
+
+<p align="center">
+  <img src="img/screenshots/06-modpoll.png" alt="modpoll reads the P1 power, energy import and tariff 1 as float32 over FC3, the current as scaled16 over FC4, and a write to a read-only register is rejected with Illegal Data Address" width="800">
+</p>
+
+<table>
+  <tr>
+    <td><img src="img/screenshots/01-setup.png" alt="Setup: slave ID, TCP port, listen address, allowed masters and share usage statistics"></td>
+    <td><img src="img/screenshots/02-pick-entity.png" alt="Add mapping: search and pick an entity, here the P1 meter power"></td>
+  </tr>
+  <tr>
+    <td align="center">Setup: slave ID, port, listen address, allowed masters</td>
+    <td align="center">Add mapping: pick any entity</td>
+  </tr>
+  <tr>
+    <td><img src="img/screenshots/03-confirm.png" alt="The detected data type float32 at REG 8–9, with scale, signed, writable and fallback"></td>
+    <td><img src="img/screenshots/05-edit-list.png" alt="Edit mapping: every mapping with its address range and data type"></td>
+  </tr>
+  <tr>
+    <td align="center">Detected type, ready to confirm or change</td>
+    <td align="center">All mappings with their registers</td>
+  </tr>
+</table>
 
 ---
 
