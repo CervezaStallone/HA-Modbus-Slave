@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="img/logo.png" alt="Modbus Slave" width="256">
+
 <h1 align="center">Modbus Slave for Home Assistant</h1>
 
 <p align="center">
