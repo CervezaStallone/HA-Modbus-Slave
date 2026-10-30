@@ -1,4 +1,4 @@
-"""Usage report: only a random installation ID, only when opted in."""
+"""Usage report: only a random installation ID, opt-out."""
 
 import uuid
 from datetime import timedelta
@@ -41,7 +41,18 @@ async def test_sends_when_opted_in(hass, aioclient_mock):
     assert first == second  # the installation ID is stable
 
 
-async def test_sends_nothing_when_not_opted_in(hass, aioclient_mock):
+async def test_entry_without_the_option_counts_as_on(hass, aioclient_mock):
+    aioclient_mock.post(TELEMETRY_URL, status=204)
+    MockConfigEntry(
+        domain=DOMAIN, unique_id="5020", data={"slave_id": 1, "port": 5020}, options={}
+    ).add_to_hass(hass)
+
+    await TelemetryReporter(hass).async_send()
+
+    assert aioclient_mock.call_count == 1
+
+
+async def test_sends_nothing_when_opted_out(hass, aioclient_mock):
     aioclient_mock.post(TELEMETRY_URL, status=204)
     add_entry(hass, 5020, share_usage=False)
     add_entry(hass, 5021, share_usage=False)

@@ -114,7 +114,7 @@ async def test_reconfigure_changes_port(hass, free_port):
         "port": new_port,
         "host": "",
         "allowed_ips": [],
-        "share_usage": False,
+        "share_usage": True,  # opt-out: an entry without the key counts as on
     }
     assert entry.unique_id == str(new_port)
     # old port is free again, new port is held by the reloaded server
