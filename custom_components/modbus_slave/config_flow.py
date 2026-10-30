@@ -54,7 +54,7 @@ def _server_schema(data: dict[str, Any]) -> vol.Schema:
                 CONF_ALLOWED_IPS, default=", ".join(data.get(CONF_ALLOWED_IPS, []))
             ): TextSelector(),
             vol.Optional(
-                CONF_SHARE_USAGE, default=data.get(CONF_SHARE_USAGE, False)
+                CONF_SHARE_USAGE, default=data.get(CONF_SHARE_USAGE, True)
             ): BooleanSelector(),
         }
     )

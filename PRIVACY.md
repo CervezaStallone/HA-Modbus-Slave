@@ -2,7 +2,7 @@
 
 **[English](#english)** · **[Nederlands](#nederlands)**
 
-Last updated: 30 October 2026. Applies to the opt-in usage statistics, available from version 0.1.0.
+Last updated: 30 October 2026. Applies to the usage statistics (on by default, opt-out), available from version 0.1.0.
 
 ---
 

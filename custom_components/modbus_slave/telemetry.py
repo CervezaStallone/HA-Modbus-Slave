@@ -1,6 +1,7 @@
 """Usage report, every 6 hours.
 
-While at least one config entry has "share usage" ticked, one report per
+Opt-out: "share usage" is on unless the user unticks it. While at least one
+config entry has it on, one report per
 Home Assistant installation goes to the telemetry server. It holds only a
 random installation ID, so the server can count active installations; the
 server looks up the country itself. Nothing about Modbus, entities or the
@@ -39,7 +40,7 @@ def build_report(install_id: str) -> dict:
 
 
 class TelemetryReporter:
-    """Sends the report while at least one entry has opted in."""
+    """Sends the report unless every entry has opted out."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self._hass = hass
@@ -57,9 +58,9 @@ class TelemetryReporter:
             return install_id
 
     async def async_send(self, _now: Any = None) -> None:
-        """Send one report; do nothing when no entry has opted in."""
+        """Send one report; do nothing when every entry has opted out."""
         entries = self._hass.config_entries.async_entries(DOMAIN)
-        if not any(e.data.get(CONF_SHARE_USAGE, False) for e in entries):
+        if not any(e.data.get(CONF_SHARE_USAGE, True) for e in entries):
             return
         try:
             async with async_get_clientsession(self._hass).post(
