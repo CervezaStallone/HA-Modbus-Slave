@@ -310,7 +310,9 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
                         )
                     ),
                     vol.Required("scale", default=str(draft.scale)): SelectSelector(
-                        SelectSelectorConfig(options=["1", "10", "100", "1000"])
+                        SelectSelectorConfig(
+                            options=["1", "10", "100", "1000"], mode=SelectSelectorMode.DROPDOWN
+                        )
                     ),
                     vol.Required("signed", default=draft.signed): BooleanSelector(),
                     vol.Required("writable", default=draft.writable): BooleanSelector(),
