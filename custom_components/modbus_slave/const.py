@@ -19,9 +19,9 @@ REG_WRITABLE_DOMAINS = {"number", "input_number"}
 
 # Usage report (telemetry.py)
 TELEMETRY_SCHEMA = 2  # payload contract version, shared with the server
-CONF_SHARE_USAGE = "share_usage"  # entry data; ticked by default in setup
+CONF_SHARE_USAGE = "share_usage"  # entry data; opt-in, off by default
 TELEMETRY_URL = "https://ha-modbus.telemetry.brdc.nl/v1/report"
-PRIVACY_URL = "https://github.com/CervezaStallone/HA-Modbus-Slave/blob/main/PRIVACY.md"
+SITE_URL = "https://www.brdc.nl"  # privacy statement under /en/privacy/ and /nl/privacy/
 TELEMETRY_TIMEOUT = 10  # seconds; fire-and-forget, no retries
 TELEMETRY_FIRST_DELAY = 600  # seconds after start
 TELEMETRY_INTERVAL = timedelta(hours=6)

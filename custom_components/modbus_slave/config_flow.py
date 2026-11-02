@@ -33,8 +33,8 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_SLAVE_ID,
     DOMAIN,
-    PRIVACY_URL,
     REG_WRITABLE_DOMAINS,
+    SITE_URL,
 )
 from .registers import DataType, Mapping, detect, find_overlap
 from .server import parse_networks
@@ -54,7 +54,7 @@ def _server_schema(data: dict[str, Any]) -> vol.Schema:
                 CONF_ALLOWED_IPS, default=", ".join(data.get(CONF_ALLOWED_IPS, []))
             ): TextSelector(),
             vol.Optional(
-                CONF_SHARE_USAGE, default=data.get(CONF_SHARE_USAGE, True)
+                CONF_SHARE_USAGE, default=data.get(CONF_SHARE_USAGE, False)
             ): BooleanSelector(),
         }
     )
@@ -128,10 +128,10 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
                 or {
                     CONF_SLAVE_ID: DEFAULT_SLAVE_ID,
                     CONF_PORT: DEFAULT_PORT,
-                    CONF_SHARE_USAGE: True,
+                    CONF_SHARE_USAGE: False,
                 }
             ),
-            description_placeholders={"privacy_url": PRIVACY_URL},
+            description_placeholders={"site_url": SITE_URL},
             errors=errors,
         )
 
@@ -159,7 +159,7 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=_server_schema(user_input or entry.data),
-            description_placeholders={"privacy_url": PRIVACY_URL},
+            description_placeholders={"site_url": SITE_URL},
             errors=errors,
         )
 

@@ -14,7 +14,7 @@
         "data_description": {
           "host": "IP address of this Home Assistant to listen on. Leave empty to listen on all interfaces.",
           "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone.",
-          "share_usage": "Ticked by default; untick to send nothing. Every 6 hours, sends only a random installation ID and the version of this integration, so active installations and versions can be counted; the server adds the country. Never addresses, entities, mappings or values. [Privacy policy]({privacy_url})"
+          "share_usage": "Off by default; nothing is sent unless you tick it. Please tick this: knowing how many installations are active and on which version is how I decide where maintenance and support time goes. When ticked, it sends every 6 hours only a random installation ID and the version of this integration; the server adds the country. Never addresses, entities, mappings or values. [Privacy statement]({site_url}/en/privacy/)"
         }
       },
       "reconfigure": {
@@ -29,7 +29,7 @@
         "data_description": {
           "host": "IP address of this Home Assistant to listen on. Leave empty to listen on all interfaces.",
           "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone.",
-          "share_usage": "Ticked by default; untick to send nothing. Every 6 hours, sends only a random installation ID and the version of this integration, so active installations and versions can be counted; the server adds the country. Never addresses, entities, mappings or values. [Privacy policy]({privacy_url})"
+          "share_usage": "Please tick this: knowing how many installations are active and on which version is how I decide where maintenance and support time goes. When ticked, it sends every 6 hours only a random installation ID and the version of this integration; the server adds the country. Never addresses, entities, mappings or values. [Privacy statement]({site_url}/en/privacy/)"
         }
       }
     },
