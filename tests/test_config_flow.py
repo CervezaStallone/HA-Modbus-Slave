@@ -25,7 +25,7 @@ async def test_user_creates_entry(hass, free_port):
         "port": free_port,
         "host": "",
         "allowed_ips": [],
-        "share_usage": True,
+        "share_usage": False,
     }
 
 
@@ -39,7 +39,7 @@ async def test_user_defaults(hass):
         "port": 502,
         "host": "",
         "allowed_ips": "",
-        "share_usage": True,
+        "share_usage": False,
     }
 
 
@@ -114,7 +114,7 @@ async def test_reconfigure_changes_port(hass, free_port):
         "port": new_port,
         "host": "",
         "allowed_ips": [],
-        "share_usage": True,  # opt-out: an entry without the key counts as on
+        "share_usage": False,  # opt-in: an entry without the key counts as off
     }
     assert entry.unique_id == str(new_port)
     # old port is free again, new port is held by the reloaded server

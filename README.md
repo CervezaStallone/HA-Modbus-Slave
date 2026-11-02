@@ -58,7 +58,7 @@ In plain terms: everything Home Assistant knows — sensors, switches, setpoints
 - **Reconfigure** — change slave ID, port, listen address or allowed masters without re-adding the integration; mapping changes apply without restarting Home Assistant
 - **Diagnostics** — a diagnostics download with every mapping, its entity state and the exact register values a master reads
 - **English and Dutch** user interface
-- **Usage statistics** — ticked by default on the setup page; sends only a random installation ID and the integration version, to count active installations and versions. See [Privacy and usage statistics](#privacy-and-usage-statistics)
+- **Usage statistics** — opt-in, off by default; sends only a random installation ID and the integration version, to count active installations and versions. See [Privacy and usage statistics](#privacy-and-usage-statistics)
 
 ---
 
@@ -298,9 +298,9 @@ When reporting a problem, attach the diagnostics file: **Settings → Devices & 
 
 ## Privacy and usage statistics
 
-The integration can send usage statistics. **Share usage statistics** is ticked by default on the setup page; untick it there, or later with **Reconfigure**, to send nothing.
+The integration can send usage statistics. It is opt-in: **Share usage statistics** on the setup page is unticked by default, and nothing is sent unless you tick it there or later with **Reconfigure**. Please do: knowing how many installations are active is how I decide where maintenance and support time goes.
 
-While at least one entry has it ticked, Home Assistant sends one report every 6 hours (the first about 10 minutes after start) to a server run by the maintainer, on servers in the EU. The full [privacy policy](PRIVACY.md) (English and Nederlands) explains what is collected, why, how long it is kept and how to have it deleted; it is also linked under the checkbox.
+While at least one entry has it ticked, Home Assistant sends one report every 6 hours (the first about 10 minutes after start) to a server I run, on servers in the EU. The full [privacy policy](PRIVACY.md) (English and Nederlands) explains what is collected, why, how long it is kept and how to have it deleted; the privacy statement on [brdc.nl](https://www.brdc.nl/en/privacy/), linked under the checkbox, summarises it.
 
 What a report contains — everything, nothing else:
 

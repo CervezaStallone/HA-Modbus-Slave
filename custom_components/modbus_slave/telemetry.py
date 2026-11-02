@@ -1,6 +1,6 @@
 """Usage report, every 6 hours.
 
-Opt-out: "share usage" is on unless the user unticks it. While at least one
+Opt-in: "share usage" is off unless the user ticks it. While at least one
 config entry has it on, one report per
 Home Assistant installation goes to the telemetry server. It holds only a
 random installation ID and the integration version, so the server can count
@@ -65,7 +65,7 @@ class TelemetryReporter:
     async def async_send(self, _now: Any = None) -> None:
         """Send one report; do nothing when every entry has opted out."""
         entries = self._hass.config_entries.async_entries(DOMAIN)
-        if not any(e.data.get(CONF_SHARE_USAGE, True) for e in entries):
+        if not any(e.data.get(CONF_SHARE_USAGE, False) for e in entries):
             return
         try:
             integration = await async_get_integration(self._hass, DOMAIN)

@@ -2,7 +2,7 @@
 
 **[English](#english)** · **[Nederlands](#nederlands)**
 
-Last updated: 30 October 2026. Applies to the usage statistics (on by default, opt-out), available from version 1.0.0; the integration version is sent from version 1.1.0.
+Last updated: 2 November 2026. Applies to the opt-in usage statistics (off by default), available from version 1.0.0; the integration version is sent from version 1.1.0.
 
 ---
 
@@ -10,7 +10,7 @@ Last updated: 30 October 2026. Applies to the usage statistics (on by default, o
 
 ### In short
 
-The integration only sends data while **Share usage statistics** is ticked. It is ticked by default when you add the integration, and you can untick it on that same page or later with **Reconfigure**. When it is on, Home Assistant sends a tiny report every 6 hours that contains a random installation ID and the version number of this integration. It is used only to count how many installations are active, in which countries and on which versions. Nothing about Modbus, your entities, your network or your Home Assistant is sent.
+The integration only sends data while **Share usage statistics** is ticked. It is unticked by default: you can tick it when you add the integration, or later with **Reconfigure**, and untick it again at any time. When it is on, Home Assistant sends a tiny report every 6 hours that contains a random installation ID and the version number of this integration. It is used only to count how many installations are active, in which countries and on which versions. Nothing about Modbus, your entities, your network or your Home Assistant is sent.
 
 ### Who is responsible
 
@@ -70,7 +70,7 @@ Changes to this policy are made in this file and are visible in its history on G
 
 ### In het kort
 
-De integratie stuurt alleen gegevens zolang **Gebruiksstatistieken delen** is aangevinkt. Bij het toevoegen van de integratie staat het standaard aan; je kunt het op die pagina uitvinken, of later via **Opnieuw configureren**. Staat het aan, dan stuurt Home Assistant elke 6 uur een heel klein rapport met een willekeurige installatie-ID en het versienummer van deze integratie. Dat wordt alleen gebruikt om te tellen hoeveel installaties actief zijn, in welke landen en op welke versies. Er wordt niets verstuurd over Modbus, je entities, je netwerk of je Home Assistant.
+De integratie stuurt alleen gegevens zolang **Gebruiksstatistieken delen** is aangevinkt. Het staat standaard uit: je kunt het aanvinken bij het toevoegen van de integratie, of later via **Opnieuw configureren**, en het op elk moment weer uitvinken. Staat het aan, dan stuurt Home Assistant elke 6 uur een heel klein rapport met een willekeurige installatie-ID en het versienummer van deze integratie. Dat wordt alleen gebruikt om te tellen hoeveel installaties actief zijn, in welke landen en op welke versies. Er wordt niets verstuurd over Modbus, je entities, je netwerk of je Home Assistant.
 
 ### Wie is verantwoordelijk
 
