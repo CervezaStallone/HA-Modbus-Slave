@@ -136,7 +136,7 @@ Go to **Settings → Devices & Services → Add Integration** and search for **M
 | **TCP port** | The port the Modbus server listens on (1–65535) | `502` |
 | **Listen address** | IP address of this Home Assistant to listen on; empty = all interfaces | All |
 | **Allowed masters** | IP addresses or CIDR ranges that may connect, comma-separated (e.g. `192.168.1.10, 10.0.5.0/24`); empty = everyone | Everyone |
-| **Share usage statistics** | Sends a random installation ID and the integration version every 6 hours; see [Privacy](#privacy-and-usage-statistics) | On |
+| **Share usage statistics** | Sends a random installation ID and the integration version every 6 hours; see [Privacy](#privacy-and-usage-statistics) | Off |
 
 > **Port 502** is a privileged port. It works on Home Assistant OS and Supervised. On Container or Core installs running as non-root, pick a port ≥ 1024 (e.g. `5020`) or grant `CAP_NET_BIND_SERVICE`. Setup tells you when the port can't be opened.
 
