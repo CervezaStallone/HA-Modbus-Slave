@@ -148,6 +148,13 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
                 if not await _port_free(data[CONF_HOST], data[CONF_PORT]):
                     error = "port_in_use"
+            elif (
+                not error
+                and data[CONF_HOST]
+                and data[CONF_HOST] != entry.data.get(CONF_HOST, "")
+                and not await _port_free(data[CONF_HOST], 0)  # port 0: is the address ours?
+            ):
+                error = "invalid_host"
             if not error:
                 return self.async_update_reload_and_abort(
                     entry,

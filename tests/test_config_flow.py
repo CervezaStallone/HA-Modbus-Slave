@@ -125,6 +125,23 @@ async def test_reconfigure_changes_port(hass, free_port):
         await asyncio.start_server(lambda _r, _w: None, port=new_port)
 
 
+async def test_reconfigure_rejects_foreign_host_on_same_port(hass, free_port):
+    entry = await setup_entry(hass, free_port)
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 1, "port": free_port, "host": "203.0.113.1"}
+    )
+    assert result.get("errors") == {"base": "invalid_host"}
+    assert entry.data.get("host", "") == ""
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 1, "port": free_port, "host": "127.0.0.1"}
+    )
+    await hass.async_block_till_done()
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data["host"] == "127.0.0.1"
+
+
 async def test_reconfigure_same_port_keeps_working(hass, free_port):
     entry = await setup_entry(hass, free_port)
     result = await entry.start_reconfigure_flow(hass)
