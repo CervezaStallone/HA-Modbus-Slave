@@ -1,5 +1,8 @@
 """Diagnostics download."""
 
+import socket
+
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.components.diagnostics import (
@@ -38,8 +41,32 @@ async def test_diagnostics(hass, hass_client, free_port):
         "host": "**REDACTED**",
         "allowed_ips": "**REDACTED**",
     }
+    assert result["state"] == "loaded"
     assert result["connected_masters"] == 0
     assert result["mappings"][0]["state"] == "12.3"
     assert result["mappings"][0]["values"] == [0x4144, 0xCCCD]
     assert result["mappings"][1]["state"] is None
     assert result["mappings"][1]["values"] == [0]
+
+
+async def test_diagnostics_when_not_loaded(hass, hass_client, free_port):
+    assert await async_setup_component(hass, "diagnostics", {})
+    hass.states.async_set("sensor.t", "12.3")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=str(free_port),
+        data={"slave_id": 1, "port": free_port},
+        options={"mappings": [{"entity_id": "sensor.t", "address": 100, "data_type": "float32"}]},
+    )
+    entry.add_to_hass(hass)
+    with socket.socket() as blocker:
+        blocker.bind(("", free_port))
+        blocker.listen()
+        await hass.config_entries.async_setup(entry.entry_id)
+        assert entry.state is ConfigEntryState.SETUP_RETRY
+        result = await get_diagnostics_for_config_entry(hass, hass_client, entry)
+    assert result["state"] == "setup_retry"
+    assert result["connected_masters"] is None
+    assert result["mappings"][0]["entity_id"] == "sensor.t"
+    assert result["mappings"][0]["state"] == "12.3"
+    assert result["mappings"][0]["values"] is None
