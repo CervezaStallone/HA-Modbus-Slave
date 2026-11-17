@@ -55,6 +55,7 @@ In plain terms: everything Home Assistant knows — sensors, switches, setpoints
 - **Optional write-back** — tick *Writable* to let the master switch entities or set numbers, with proper Modbus exception codes on invalid writes
 - **Real-time** — state changes are in the registers immediately, no polling
 - **Only answers its own slave ID** — requests for other unit IDs get no reply, like a real device behind a gateway
+- **Several slaves on one port** — add the integration again with the same port and another slave ID; one listener answers each unit ID from its own mappings, like a gateway
 - **Overlap protection** — a mapping can't overlap another one, including the second register of a 32-bit value
 - **Reconfigure** — change slave ID, port, listen address or allowed masters without re-adding the integration; mapping changes apply without restarting Home Assistant
 - **Diagnostics** — a diagnostics download with every mapping, its entity state and the exact register values a master reads
@@ -139,6 +140,8 @@ Go to **Settings → Devices & Services → Add Integration** and search for **M
 | **Allowed masters** | IP addresses or CIDR ranges that may connect, comma-separated (e.g. `192.168.1.10, 10.0.5.0/24`); empty = everyone | Everyone |
 | **Master can read floating point values** | Tick when your master reads 32-bit floats (REAL/FLOAT). Off: decimal values are suggested as whole numbers with a scale factor (21.5 → 215), which every master reads. Only affects new suggestions | Off |
 | **Share usage statistics** | Sends a random installation ID and the integration version every 6 hours; see [Privacy](#privacy-and-usage-statistics) | Off |
+
+> **Several slave IDs on one port:** add the integration once per slave ID with the same port. They share one listener, so they need the same listen address and allowed masters; setup tells you when they differ. Removing one slave keeps the others running.
 
 > **Port 502** is a privileged port. It works on Home Assistant OS and Supervised. On Container or Core installs running as non-root, pick a port ≥ 1024 (e.g. `5020`) or grant `CAP_NET_BIND_SERVICE`. Setup tells you when the port can't be opened.
 
