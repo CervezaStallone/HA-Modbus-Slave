@@ -153,3 +153,76 @@ def test_scaled32_decode(kw, words, value):
     mapping = m("scaled32", **kw)
     assert mapping.size == 2
     assert decode(mapping, words) == pytest.approx(value)
+
+
+# --- guided type choice -------------------------------------------------------
+# referenced through the module so a missing name fails the test, not collection
+from custom_components.modbus_slave import registers as R  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(0, 10), (7, 10), (11, 20), (21, 50), (51, 100), (640, 1000), (1001, 2000)],
+)
+def test_nice_ceil(value, expected):
+    assert R.nice_ceil(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("answers", "float_ok", "expected"),
+    [
+        ((False, 0, 65535), False, ("uint16", 1, False)),
+        ((False, 0, 65536), False, ("uint32", 1, False)),
+        ((True, 0, 32767), True, ("int16", 1, False)),
+        ((True, 0, 32768), False, ("int32", 1, False)),
+        ((True, 1, 100), False, ("scaled16", 10, True)),
+        ((False, 1, 6553.5), False, ("scaled16", 10, False)),
+        ((False, 1, 6553.6), False, ("scaled32", 10, False)),
+        ((True, 1, 100), True, ("float32", 1, False)),
+        ((False, 2, 167772.16), True, ("float32", 1, False)),
+        ((False, 2, 167772.17), True, ("scaled32", 100, False)),
+        ((False, 0, 2**32), False, None),
+        ((True, 3, 1e7), False, None),
+    ],
+)
+def test_choose_type(answers, float_ok, expected):
+    choice = R.choose_type(R.Answers(*answers), float_ok)
+    if expected is None:
+        assert choice is None
+    else:
+        assert choice == R.TypeChoice(R.DataType(expected[0]), expected[1], expected[2])
+
+
+def test_suggest_answers_bounds_are_authoritative():
+    ev = R.Evidence(current=5, lo=-50, hi=900, bounds=(0, 30), decimals=1)
+    assert R.suggest_answers("input_number", ev) == R.Answers(False, 1, 30)
+
+
+def test_suggest_answers_temperature_without_negatives_is_signed():
+    ev = R.Evidence(
+        current=21.3, lo=15.0, hi=31.7, decimals=1, device_class="temperature", history_days=10
+    )
+    assert R.suggest_answers("sensor", ev) == R.Answers(True, 1, 100)
+
+
+def test_suggest_answers_meter_gets_big_headroom():
+    ev = R.Evidence(current=12000, lo=11000, hi=12000, decimals=1, state_class="total_increasing")
+    assert R.suggest_answers("sensor", ev).max_value == 2_000_000
+
+
+def test_suggest_answers_no_numbers():
+    assert R.suggest_answers("sensor", R.Evidence(device_class="power")) == R.Answers(True, 1, 1000)
+
+
+def test_answers_from_mapping():
+    ev = R.Evidence(hi=40, decimals=2)
+    scaled = m(DataType.SCALED16, scale=10, signed=True)
+    assert R.answers_from_mapping(scaled, ev) == R.Answers(True, 1, 100)
+    assert R.answers_from_mapping(m(DataType.UINT16), ev) == R.Answers(False, 0, 100)
+    assert R.answers_from_mapping(m(DataType.FLOAT32), ev).decimals == 2
+
+
+def test_has_numbers():
+    assert not R.has_numbers(R.Evidence(device_class="power"))
+    assert R.has_numbers(R.Evidence(hi=1))
+    assert R.has_numbers(R.Evidence(bounds=(0, 1)))

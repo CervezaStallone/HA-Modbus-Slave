@@ -8,7 +8,13 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 
-from .const import BIT_DOMAINS
+from .const import (
+    BIT_DOMAINS,
+    FLOAT32_EXACT,
+    HEADROOM,
+    HEADROOM_TOTAL,
+    SIGNED_DEVICE_CLASSES,
+)
 
 
 class DataType(StrEnum):
@@ -80,7 +86,7 @@ class Mapping:
         return {**asdict(self), "data_type": str(self.data_type)}
 
 
-def _decimals(value: str) -> int:
+def decimals_of(value: str) -> int:
     try:
         exponent = Decimal(str(value)).normalize().as_tuple().exponent
     except InvalidOperation:
@@ -89,10 +95,10 @@ def _decimals(value: str) -> int:
 
 
 def _suggested_scale(value: str) -> int:
-    return min(10 ** _decimals(value), 1000)
+    return min(10 ** decimals_of(value), 1000)
 
 
-def _to_float(state: str) -> float | None:
+def to_float(state: str) -> float | None:
     try:
         value = float(state)
     except (TypeError, ValueError):
@@ -116,7 +122,7 @@ def detect(domain: str, state: str, attributes: dict) -> dict | None:
                 data_type = DataType.INT16
         return {"data_type": data_type, "scale": _suggested_scale(step), "signed": signed}
 
-    value = _to_float(state)
+    value = to_float(state)
     if value is None:
         return None
     return {"data_type": DataType.FLOAT32, "scale": _suggested_scale(state), "signed": value < 0}
@@ -127,7 +133,7 @@ def encode(mapping: Mapping, state: str) -> tuple[list, bool]:
     if mapping.data_type == DataType.BIT:
         return [state == "on"], False
 
-    value = _to_float(state)
+    value = to_float(state)
     if value is None:
         value = float(mapping.fallback)
 
@@ -160,6 +166,112 @@ def decode(mapping: Mapping, words: list) -> float | int | bool:
     if mapping.data_type in _SCALED:
         return struct.unpack(_INT_FORMATS[_scaled_base(mapping)][0], raw)[0] / mapping.scale
     return struct.unpack(_INT_FORMATS[mapping.data_type][0], raw)[0]
+
+
+# --- guided type choice: plain answers about the value -> data type -----------
+
+
+@dataclass(frozen=True)
+class Evidence:
+    """What Home Assistant knows about an entity's value."""
+
+    current: float | None = None
+    lo: float | None = None  # lowest numeric value seen (history, statistics, current)
+    hi: float | None = None
+    bounds: tuple[float, float] | None = None  # number/input_number (min, max)
+    decimals: int | None = None
+    device_class: str | None = None
+    state_class: str | None = None
+    history_days: int = 0
+
+
+@dataclass(frozen=True)
+class Answers:
+    """The user's answers: can it be negative, decimals to keep, highest value."""
+
+    negative: bool
+    decimals: int
+    max_value: float
+
+
+@dataclass(frozen=True)
+class TypeChoice:
+    data_type: DataType
+    scale: int = 1
+    signed: bool = False
+
+
+def has_numbers(evidence: Evidence) -> bool:
+    return any(v is not None for v in (evidence.current, evidence.lo, evidence.hi, evidence.bounds))
+
+
+def nice_ceil(value: float) -> float:
+    """Round up to 1, 2 or 5 × 10^n, at least 10."""
+    if value <= 10:
+        return 10
+    power = 10 ** math.floor(math.log10(value))
+    return next(step * power for step in (1, 2, 5, 10) if step * power >= value)
+
+
+def suggest_answers(domain: str, evidence: Evidence) -> Answers:
+    """Pre-fill the questions from the evidence."""
+    if domain in BIT_DOMAINS:
+        return Answers(False, 0, 1)
+    if evidence.decimals is not None:
+        decimals = min(evidence.decimals, 3)
+    else:
+        decimals = 0 if evidence.bounds else 1
+    if evidence.bounds:  # a number's own range is exact: no guessing, no headroom
+        lo, hi = evidence.bounds
+        return Answers(lo < 0, decimals, max(abs(lo), abs(hi)))
+
+    seen = [v for v in (evidence.lo, evidence.hi, evidence.current) if v is not None]
+    negative = any(v < 0 for v in seen) or evidence.device_class in SIGNED_DEVICE_CLASSES
+    if not seen:
+        return Answers(negative, decimals, 1000)
+    rising = evidence.state_class in ("total", "total_increasing")
+    headroom = HEADROOM_TOTAL if rising else HEADROOM
+    return Answers(negative, decimals, nice_ceil(max(abs(v) for v in seen) * headroom))
+
+
+def answers_from_mapping(mapping: Mapping, evidence: Evidence) -> Answers:
+    """The answers that lead to an existing mapping's type, for editing it."""
+    suggested = suggest_answers(mapping.entity_id.split(".", 1)[0], evidence)
+    data_type = mapping.data_type
+    if data_type in _SCALED:
+        negative, decimals = mapping.signed, round(math.log10(mapping.scale))
+    elif data_type in (DataType.INT16, DataType.INT32):
+        negative, decimals = True, 0
+    elif data_type in (DataType.UINT16, DataType.UINT32):
+        negative, decimals = False, 0
+    else:
+        return suggested
+    return Answers(negative, decimals, suggested.max_value)
+
+
+def choose_type(answers: Answers, float_support: bool) -> TypeChoice | None:
+    """The smallest type that holds the answers exactly; None if nothing fits."""
+
+    def fits(value: float, bits: int) -> bool:
+        limit = 2 ** (bits - 1) - 1 if answers.negative else 2**bits - 1
+        return value <= limit
+
+    if answers.decimals == 0:
+        if fits(answers.max_value, 16):
+            return TypeChoice(DataType.INT16 if answers.negative else DataType.UINT16)
+        if fits(answers.max_value, 32):
+            return TypeChoice(DataType.INT32 if answers.negative else DataType.UINT32)
+        return None
+
+    scale = 10**answers.decimals
+    raw = round(answers.max_value * scale, 6)  # 6553.5 × 10 must be 65535, not 65535.000001
+    if float_support and raw <= FLOAT32_EXACT:
+        return TypeChoice(DataType.FLOAT32)
+    if fits(raw, 16):
+        return TypeChoice(DataType.SCALED16, scale, answers.negative)
+    if fits(raw, 32):
+        return TypeChoice(DataType.SCALED32, scale, answers.negative)
+    return None
 
 
 def find_overlap(
