@@ -611,3 +611,26 @@ async def test_proposed_address_follows_a_wider_type(hass, free_port):
     defaults = form_defaults(result)
     assert defaults["address"] == 4
     assert "÷ 100" in result["description_placeholders"]["result_type"]
+
+
+async def test_reconfigure_keeps_a_renamed_title(hass, free_port):
+    entry = await setup_entry(hass, free_port)
+    hass.config_entries.async_update_entry(entry, title="Warmtepomp")
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 4, "port": free_port}
+    )
+    await hass.async_block_till_done()
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.title == "Warmtepomp"
+
+
+async def test_reconfigure_updates_the_default_title(hass, free_port):
+    entry = await setup_entry(hass, free_port)
+    hass.config_entries.async_update_entry(entry, title=f"Modbus Slave (port {free_port}, ID 1)")
+    result = await entry.start_reconfigure_flow(hass)
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 4, "port": free_port}
+    )
+    await hass.async_block_till_done()
+    assert entry.title == f"Modbus Slave (port {free_port}, ID 4)"

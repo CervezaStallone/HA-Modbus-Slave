@@ -180,6 +180,8 @@ Changes apply immediately — the integration reloads itself; Home Assistant doe
 
 To change the slave ID, port, listen address, allowed masters, float support or usage statistics: **Settings → Devices & Services → Modbus Slave → ⋮ → Reconfigure**. Mappings are kept.
 
+To give a slave its own name (handy with several slaves on one port): **⋮ → Rename**. Reconfigure keeps that name.
+
 ---
 
 ## Data types
