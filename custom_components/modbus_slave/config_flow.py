@@ -49,7 +49,9 @@ from .registers import (
     choose_type,
     encode,
     find_overlap,
+    first_free,
     has_numbers,
+    master_view,
     suggest_answers,
 )
 from .server import parse_networks
@@ -241,6 +243,7 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
         self._evidence = Evidence()
         self._edit_index: int | None = None
         self._pending: dict[str, Any] | None = None  # input that got a notice instead of saving
+        self._proposed: int | None = None  # address we filled in, until the user changes it
 
     @property
     def mappings(self) -> list[Mapping]:
@@ -286,9 +289,9 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
                 self._edit_index = None
                 self._evidence = evidence
                 self._form = self._prefill(
-                    {"entity_id": entity_id, "address": int(user_input["address"])},
-                    suggest_answers(domain, evidence),
+                    {"entity_id": entity_id, "address": 0}, suggest_answers(domain, evidence)
                 )
+                self._form["address"] = self._proposed = self._free_address(self._form)
                 return await self.async_step_confirm()
             errors["base"] = "unsupported_entity"
         return self.async_show_form(
@@ -296,7 +299,6 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required("entity"): EntitySelector(),
-                    vol.Required("address", default=0): _number(0, 65535),
                 }
             ),
             errors=errors,
@@ -307,6 +309,7 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         if user_input is not None:
             self._edit_index = int(user_input["mapping"])
+            self._proposed = None
             mapping = self.mappings[self._edit_index]
             self._evidence = await async_gather_evidence(self.hass, mapping.entity_id)
             self._form = self._prefill(
@@ -375,6 +378,12 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
                 # the user changed an answer, not the preset type: the answers win
                 user_input = {**user_input, "advanced": _AUTO}
             self._form = {"entity_id": self._form["entity_id"], **user_input}
+            if self._proposed is not None and int(user_input["address"]) == self._proposed:
+                # address left as proposed: keep it the first free one for the new type
+                user_input["address"] = self._form["address"] = self._free_address(self._form)
+                self._proposed = user_input["address"]
+            else:
+                self._proposed = None  # the user picked an address: leave it alone
             choice = self._choice(self._form)
             confirmed = user_input == self._pending  # same input again: user saw the notice
             mapping = choice and Mapping(
@@ -469,6 +478,12 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
             return "warn_max"
         return ""
 
+    def _free_address(self, form: dict[str, Any]) -> int:
+        """First address where this type fits; unchanged when no type fits (validation says why)."""
+        if (choice := self._choice(form)) is None:
+            return int(form["address"])
+        return first_free(self.mappings, Mapping(form["entity_id"], 0, choice.data_type))
+
     @property
     def _is_bit(self) -> bool:
         return self._form["entity_id"].split(".", 1)[0] in BIT_DOMAINS
@@ -519,9 +534,6 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
         if choice is None:
             return text
         example = Mapping(form["entity_id"], 0, choice.data_type, choice.scale, choice.signed)
-        result = str(choice.data_type)
-        if choice.data_type in (DataType.SCALED16, DataType.SCALED32):
-            result += f", {'signed' if choice.signed else 'unsigned'}, ×{choice.scale}"
         if self._is_bit:
             value = "on"
         else:
@@ -529,7 +541,7 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
             value = num(sample if sample is not None else float(form["max_value"]))
         words, _ = encode(example, value)
         text |= {
-            "result_type": result,
+            "result_type": master_view(example),
             "registers": str(example.size),
             "example_value": value,
             "example_words": " ".join(str(int(w)) for w in words),

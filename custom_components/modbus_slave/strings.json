@@ -62,8 +62,7 @@
       "add_mapping": {
         "title": "Add mapping",
         "data": {
-          "entity": "Entity",
-          "address": "Start address"
+          "entity": "Entity"
         }
       },
       "edit_mapping": {
@@ -80,7 +79,7 @@
       },
       "confirm": {
         "title": "{entity}",
-        "description": "Now: {current} · Seen: {lo} … {hi} ({days} days)\nResult: {result_type} — {registers} register(s). {example_value} is sent as [{example_words}].\n\nAnswer the questions about the value; the data type follows from them. Writable: anyone who can reach this port can control this entity. Modbus TCP has no authentication.",
+        "description": "Now: {current} · Seen: {lo} … {hi} ({days} days)\nProposal: the master reads {registers} register(s) as {result_type}. {example_value} is sent as [{example_words}].\n\nThe proposal follows from your answers below. Change an answer and submit to see the new proposal. Writable: anyone who can reach this port can control this entity. Modbus TCP has no authentication.",
         "data": {
           "address": "Start address",
           "negative": "Can be negative",
@@ -118,7 +117,7 @@
       "value_too_large": "This value does not fit, even in 2 registers. Keep fewer decimals, or enable floats for this server.",
       "warn_negative": "History shows negative values. Submit again to keep your choice.",
       "warn_max": "History shows higher values than this. Submit again to keep your choice.",
-      "result_changed": "Your answers changed the data type. Check the result above and submit again to save."
+      "result_changed": "New proposal: {result_type}. Check it above and submit again to save."
     }
   },
   "selector": {
@@ -131,8 +130,8 @@
         "uint32": "uint32",
         "int32": "int32",
         "float32": "float32",
-        "scaled16": "scaled16",
-        "scaled32": "scaled32"
+        "scaled16": "scaled16 (16-bit whole number ÷ scale)",
+        "scaled32": "scaled32 (32-bit whole number ÷ scale)"
       }
     }
   }

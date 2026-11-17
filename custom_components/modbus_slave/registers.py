@@ -260,6 +260,30 @@ def find_overlap(
     return None
 
 
+def first_free(mappings: list[Mapping], candidate: Mapping) -> int:
+    """Lowest start address in the candidate's space where it fits without overlap."""
+    address = 0
+    for other in sorted(
+        (m for m in mappings if m.space == candidate.space), key=lambda m: m.address
+    ):
+        if address + candidate.size <= other.address:
+            break
+        address = max(address, other.end + 1)
+    return address
+
+
+def master_view(mapping: Mapping) -> str:
+    """What the master reads, in its own terms: base type, divisor and range."""
+    if mapping.data_type in (DataType.BIT, DataType.FLOAT32):
+        return str(mapping.data_type)
+    base = _scaled_base(mapping) if mapping.data_type in _SCALED else mapping.data_type
+    _, lo, hi = _INT_FORMATS[base]
+    scale = mapping.scale
+    digits = len(str(scale)) - 1
+    divisor = f" ÷ {scale}" if scale > 1 else ""
+    return f"{base}{divisor} · {lo / scale:.{digits}f} … {hi / scale:.{digits}f}"
+
+
 class RegisterTable:
     """In-memory bit and register spaces served to the Modbus master."""
 

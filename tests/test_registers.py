@@ -11,6 +11,8 @@ from custom_components.modbus_slave.registers import (
     decode,
     encode,
     find_overlap,
+    first_free,
+    master_view,
 )
 
 
@@ -185,3 +187,26 @@ def test_has_numbers():
     assert not R.has_numbers(R.Evidence(device_class="power"))
     assert R.has_numbers(R.Evidence(hi=1))
     assert R.has_numbers(R.Evidence(bounds=(0, 1)))
+
+
+def test_first_free_fills_gaps_per_space():
+    taken = [m(DataType.UINT16, 0), m(DataType.FLOAT32, 2), m(DataType.BIT, 0)]
+    assert first_free(taken, m(DataType.UINT16)) == 1
+    assert first_free(taken, m(DataType.UINT32)) == 4
+    assert first_free(taken, m(DataType.BIT)) == 1
+    assert first_free([], m(DataType.FLOAT32)) == 0
+
+
+@pytest.mark.parametrize(
+    ("mapping", "text"),
+    [
+        (m(DataType.SCALED16, scale=10, signed=True), "int16 ÷ 10 · -3276.8 … 3276.7"),
+        (m(DataType.SCALED16, scale=10), "uint16 ÷ 10 · 0.0 … 6553.5"),
+        (m(DataType.SCALED32, scale=100), "uint32 ÷ 100 · 0.00 … 42949672.95"),
+        (m(DataType.INT16), "int16 · -32768 … 32767"),
+        (m(DataType.FLOAT32), "float32"),
+        (m(DataType.BIT), "bit"),
+    ],
+)
+def test_master_view(mapping, text):
+    assert master_view(mapping) == text

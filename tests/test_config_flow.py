@@ -212,11 +212,13 @@ async def add_mapping(hass, entry, entity, address, **confirm):
         result["flow_id"], {"next_step_id": "add_mapping"}
     )
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"entity": entity, "address": address}
+        result["flow_id"], {"entity": entity}
     )
     if result["step_id"] != "confirm":
         return result
     defaults = form_defaults(result)
+    if address is not None:
+        confirm = {"address": address, **confirm}
     return await hass.config_entries.options.async_configure(
         result["flow_id"], {**defaults, **confirm}
     ), defaults
@@ -580,3 +582,32 @@ async def test_confirm_bounds_suggestion_saves_without_max_warning(hass, free_po
     assert defaults["max_value"] == 100
     assert result.get("errors") is None
     assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_add_mapping_proposes_first_free_address(hass, free_port):
+    hass.states.async_set("sensor.t", "21.34", {"device_class": "temperature"})
+    mappings = [
+        {"entity_id": "sensor.a", "address": 0, "data_type": "uint16"},
+        {"entity_id": "sensor.b", "address": 2, "data_type": "float32"},
+    ]
+    entry = await setup_entry(hass, free_port, mappings)
+    result, defaults = await add_mapping(hass, entry, "sensor.t", None)
+    assert defaults["address"] == 1  # the 1-register gap fits scaled16
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options["mappings"][-1]["address"] == 1
+
+
+async def test_proposed_address_follows_a_wider_type(hass, free_port):
+    hass.states.async_set("sensor.t", "21.34", {"device_class": "temperature"})
+    mappings = [
+        {"entity_id": "sensor.a", "address": 0, "data_type": "uint16"},
+        {"entity_id": "sensor.b", "address": 2, "data_type": "float32"},
+    ]
+    entry = await setup_entry(hass, free_port, mappings)
+    # 1e6 with 2 decimals needs scaled32: 2 registers no longer fit the gap at 1
+    result, _ = await add_mapping(hass, entry, "sensor.t", None, max_value=1e6)
+    assert result.get("errors") == {"base": "result_changed"}
+    defaults = form_defaults(result)
+    assert defaults["address"] == 4
+    assert "÷ 100" in result["description_placeholders"]["result_type"]
