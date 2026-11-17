@@ -21,6 +21,18 @@ class DataType(StrEnum):
     INT32 = "int32"
     FLOAT32 = "float32"
     SCALED16 = "scaled16"
+    SCALED32 = "scaled32"
+
+
+_WIDE = (DataType.UINT32, DataType.INT32, DataType.FLOAT32, DataType.SCALED32)
+_SCALED = (DataType.SCALED16, DataType.SCALED32)
+
+
+def _scaled_base(mapping: Mapping) -> DataType:
+    """The integer type a scaled value is stored as."""
+    if mapping.data_type == DataType.SCALED32:
+        return DataType.INT32 if mapping.signed else DataType.UINT32
+    return DataType.INT16 if mapping.signed else DataType.UINT16
 
 
 # struct format and (min, max) per integer type; big-endian, high word first
@@ -50,7 +62,7 @@ class Mapping:
 
     @property
     def size(self) -> int:
-        return 2 if self.data_type in (DataType.UINT32, DataType.INT32, DataType.FLOAT32) else 1
+        return 2 if self.data_type in _WIDE else 1
 
     @property
     def space(self) -> str:
@@ -125,9 +137,9 @@ def encode(mapping: Mapping, state: str) -> tuple[list, bool]:
         return list(struct.unpack(">HH", struct.pack(">f", value))), clamped
 
     data_type = mapping.data_type
-    if data_type == DataType.SCALED16:
+    if data_type in _SCALED:
         value *= mapping.scale
-        data_type = DataType.INT16 if mapping.signed else DataType.UINT16
+        data_type = _scaled_base(mapping)
 
     fmt, lo, hi = _INT_FORMATS[data_type]
     number = round(value)
@@ -145,9 +157,8 @@ def decode(mapping: Mapping, words: list) -> float | int | bool:
     raw = struct.pack(f">{len(words)}H", *words)
     if mapping.data_type == DataType.FLOAT32:
         return struct.unpack(">f", raw)[0]
-    if mapping.data_type == DataType.SCALED16:
-        fmt = ">h" if mapping.signed else ">H"
-        return struct.unpack(fmt, raw)[0] / mapping.scale
+    if mapping.data_type in _SCALED:
+        return struct.unpack(_INT_FORMATS[_scaled_base(mapping)][0], raw)[0] / mapping.scale
     return struct.unpack(_INT_FORMATS[mapping.data_type][0], raw)[0]
 
 

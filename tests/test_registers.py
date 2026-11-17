@@ -128,3 +128,28 @@ def test_table_read_and_writable_lookup():
     assert table.writable_mapping_at("registers", 300, 1) is None  # unmapped
     assert table.writable_mapping_at("bits", 0, 1) is sw
     assert table.writable_mapping_at("registers", 0, 1) is None  # other space
+
+
+@pytest.mark.parametrize(
+    ("kw", "state", "words", "clamped"),
+    [
+        ({"scale": 10}, "12345.6", [0x0001, 0xE240], False),
+        ({"scale": 10, "signed": True}, "-1.5", [0xFFFF, 0xFFF1], False),
+        ({"scale": 1000}, "-1", [0, 0], True),
+    ],
+)
+def test_scaled32_encode(kw, state, words, clamped):
+    assert encode(m("scaled32", **kw), state) == (words, clamped)
+
+
+@pytest.mark.parametrize(
+    ("kw", "words", "value"),
+    [
+        ({"scale": 10}, [0x0001, 0xE240], 12345.6),
+        ({"scale": 10, "signed": True}, [0xFFFF, 0xFFF1], -1.5),
+    ],
+)
+def test_scaled32_decode(kw, words, value):
+    mapping = m("scaled32", **kw)
+    assert mapping.size == 2
+    assert decode(mapping, words) == pytest.approx(value)
