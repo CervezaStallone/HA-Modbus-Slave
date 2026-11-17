@@ -115,6 +115,32 @@ async def _port_free(host: str, port: int) -> bool:
     return True
 
 
+def _unique_id(data: dict[str, Any]) -> str:
+    return f"{data[CONF_PORT]}-{data[CONF_SLAVE_ID]}"
+
+
+def _shared_port_error(hass, data: dict[str, Any], entry_id: str | None = None) -> str | None:
+    """Slaves on one port share its listener, so they need its host and allowed IPs."""
+    for other in hass.config_entries.async_entries(DOMAIN):
+        if other.entry_id == entry_id or other.data[CONF_PORT] != data[CONF_PORT]:
+            continue
+        if other.data[CONF_SLAVE_ID] == data[CONF_SLAVE_ID]:
+            return "slave_id_in_use"
+        if other.data.get(CONF_HOST, "") != data[CONF_HOST] or sorted(
+            other.data.get(CONF_ALLOWED_IPS, [])
+        ) != sorted(data[CONF_ALLOWED_IPS]):
+            return "port_settings_differ"
+    return None
+
+
+def _port_shared(hass, port: int, entry_id: str | None = None) -> bool:
+    """Another entry already listens on this port (so it is ours, not free)."""
+    return any(
+        e.entry_id != entry_id and e.data[CONF_PORT] == port
+        for e in hass.config_entries.async_entries(DOMAIN)
+    )
+
+
 def _title(slave_id: int, port: int) -> str:
     return f"Modbus Slave (port {port}, ID {slave_id})"
 
@@ -128,16 +154,22 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
     """Set up slave ID and port."""
 
     VERSION = 1
+    MINOR_VERSION = 2
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             data, error = _parse_server(user_input)
             if not error:
-                await self.async_set_unique_id(str(data[CONF_PORT]))
+                await self.async_set_unique_id(_unique_id(data))
                 self._abort_if_unique_id_configured()
-                if not await _port_free(data[CONF_HOST], data[CONF_PORT]):
-                    error = "port_in_use"
+                error = _shared_port_error(self.hass, data)
+            if (
+                not error
+                and not _port_shared(self.hass, data[CONF_PORT])
+                and not await _port_free(data[CONF_HOST], data[CONF_PORT])
+            ):
+                error = "port_in_use"
             if not error:
                 return self.async_create_entry(
                     title=_title(data[CONF_SLAVE_ID], data[CONF_PORT]),
@@ -166,11 +198,13 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             data, error = _parse_server(user_input)
+            if not error:
+                error = _shared_port_error(self.hass, data, entry.entry_id)
             # an unchanged port is held by our own server, so it can't be checked
             if not error and data[CONF_PORT] != entry.data[CONF_PORT]:
-                await self.async_set_unique_id(str(data[CONF_PORT]))
-                self._abort_if_unique_id_configured()
-                if not await _port_free(data[CONF_HOST], data[CONF_PORT]):
+                if not _port_shared(
+                    self.hass, data[CONF_PORT], entry.entry_id
+                ) and not await _port_free(data[CONF_HOST], data[CONF_PORT]):
                     error = "port_in_use"
             elif (
                 not error
@@ -182,7 +216,7 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
             if not error:
                 return self.async_update_reload_and_abort(
                     entry,
-                    unique_id=str(data[CONF_PORT]),
+                    unique_id=_unique_id(data),
                     title=_title(data[CONF_SLAVE_ID], data[CONF_PORT]),
                     data=data,
                 )

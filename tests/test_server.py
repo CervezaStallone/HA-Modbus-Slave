@@ -25,7 +25,7 @@ def f32(value: float) -> list[int]:
 async def setup(hass, port, mappings=(), slave_id=1, **data):
     entry = MockConfigEntry(
         domain=DOMAIN,
-        unique_id=str(port),
+        unique_id=f"{port}-{slave_id}",
         data={"slave_id": slave_id, "port": port, **data},
         options={"mappings": list(mappings)},
     )
@@ -283,3 +283,51 @@ async def test_scaled32_write(hass, free_port, client):
     await hass.async_block_till_done()
     assert float(hass.states.get("input_number.big").state) == pytest.approx(12345.6)
     assert (await c.read_holding_registers(0, count=2, device_id=1)).registers == [1, 0xE240]
+
+
+async def test_slaves_share_a_port(hass, free_port, client):
+    hass.states.async_set("sensor.a", "7")
+    hass.states.async_set("sensor.b", "9")
+    one = await setup(
+        hass, free_port, [{"entity_id": "sensor.a", "address": 0, "data_type": "uint16"}]
+    )
+    two = await setup(
+        hass,
+        free_port,
+        [{"entity_id": "sensor.b", "address": 0, "data_type": "uint16"}],
+        slave_id=2,
+    )
+    assert two.state is ConfigEntryState.LOADED
+    c = await client()
+    assert (await c.read_holding_registers(0, count=1, device_id=1)).registers == [7]
+    assert (await c.read_holding_registers(0, count=1, device_id=2)).registers == [9]
+
+    # unloading one slave keeps the listener and the other slave's connection
+    assert await hass.config_entries.async_unload(one.entry_id)
+    assert (await c.read_holding_registers(0, count=1, device_id=2)).registers == [9]
+    with pytest.raises(ModbusException):
+        await c.read_holding_registers(0, count=1, device_id=1)
+
+    assert await hass.config_entries.async_unload(two.entry_id)
+    assert not (await client()).connected  # last slave gone: port closed
+
+
+async def test_reconfigure_moves_one_slave_off_a_shared_port(hass, free_port, client):
+    hass.states.async_set("sensor.b", "9")
+    one = await setup(hass, free_port)
+    await setup(
+        hass,
+        free_port,
+        [{"entity_id": "sensor.b", "address": 0, "data_type": "uint16"}],
+        slave_id=2,
+    )
+    new_port = free_port + 1 if free_port < 65535 else free_port - 1
+    result = await one.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 1, "port": new_port}
+    )
+    await hass.async_block_till_done()
+    assert result["reason"] == "reconfigure_successful"
+    assert (await (await client()).read_holding_registers(0, count=1, device_id=2)).registers == [9]
+    moved = await client(new_port)
+    assert (await moved.read_holding_registers(0, count=1, device_id=1)).registers == [0]

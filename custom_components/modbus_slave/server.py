@@ -26,47 +26,48 @@ _ECHO_CODES = (5, 6)  # single writes echo the request back
 
 
 class HAContext(ModbusServerContext):
-    """Serves one slave ID from the register table and forwards writes to HA.
+    """Serves each slave ID on a port from its own register table; forwards writes to HA.
 
     Subclassed only because ModbusTcpServer type-checks the context; the
     deprecated base __init__ is deliberately not called.
     """
 
-    def __init__(self, hass: HomeAssistant, slave_id: int, table: RegisterTable) -> None:
+    def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
-        self.slave_id = slave_id
-        self.table = table
+        self.tables: dict[int, RegisterTable] = {}  # slave ID -> table, one per config entry
         self.simdevices = []
         self._echo: list = []
 
     def device_ids(self) -> list[int]:
-        return [self.slave_id]
+        return list(self.tables)
 
-    def _check_device(self, device_id: int) -> None:
-        if device_id != self.slave_id:
-            raise NoSuchIdException(f"device_id {device_id} is not served")
+    def _table(self, device_id: int) -> RegisterTable:
+        try:
+            return self.tables[device_id]
+        except KeyError:
+            raise NoSuchIdException(f"device_id {device_id} is not served") from None
 
     async def async_getValues(  # noqa: N802 - pymodbus API name
         self, device_id: int, func_code: int, address: int, count: int = 1
     ) -> list[int] | list[bool] | ExcCodes:
-        self._check_device(device_id)
+        table = self._table(device_id)
         if func_code in _ECHO_CODES:
             return self._echo
         space = _READ_SPACES.get(func_code)
         if space == "bits":
-            return self.table.read_bits(address, count)
+            return table.read_bits(address, count)
         if space == "registers":
-            return self.table.read_registers(address, count)
+            return table.read_registers(address, count)
         return ExcCodes.ILLEGAL_FUNCTION
 
     async def async_setValues(  # noqa: N802 - pymodbus API name
         self, device_id: int, func_code: int, address: int, values: list[int] | list[bool]
     ) -> ExcCodes | None:
-        self._check_device(device_id)
+        table = self._table(device_id)
         space = _WRITE_SPACES.get(func_code)
         if space is None:
             return ExcCodes.ILLEGAL_FUNCTION
-        mapping = self.table.writable_mapping_at(space, address, len(values))
+        mapping = table.writable_mapping_at(space, address, len(values))
         if mapping is None:
             return ExcCodes.ILLEGAL_ADDRESS
 
