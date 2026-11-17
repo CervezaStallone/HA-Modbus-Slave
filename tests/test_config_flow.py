@@ -472,3 +472,61 @@ async def test_add_mapping_unavailable_sensor_with_device_class(hass, free_port)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     result = await add_mapping(hass, entry, "sensor.ts", 10)
     assert result["errors"] == {"base": "unsupported_entity"}
+
+
+async def test_add_mapping_rejects_non_numeric_domain_with_device_class(hass, free_port):
+    hass.states.async_set("cover.garage", "closed", {"device_class": "garage"})
+    entry = await setup_entry(hass, free_port)
+    result = await add_mapping(hass, entry, "cover.garage", 0)
+    assert isinstance(result, dict)
+    assert result.get("errors") == {"base": "unsupported_entity"}
+
+
+async def edit_first(hass, entry):
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "edit_mapping"}
+    )
+    return await hass.config_entries.options.async_configure(result["flow_id"], {"mapping": "0"})
+
+
+LEGACY_FLOAT = {"entity_id": "sensor.a", "address": 100, "data_type": "float32", "scale": 10}
+
+
+async def test_edit_legacy_mapping_changed_answer_applies(hass, free_port):
+    hass.states.async_set("sensor.a", "12.3")
+    entry = await setup_entry(hass, free_port, [LEGACY_FLOAT])
+    result = await edit_first(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**form_defaults(result), "decimals": "0"}
+    )
+    assert result.get("errors") == {"base": "result_changed"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], form_defaults(result)
+    )
+    await hass.async_block_till_done()
+    assert entry.options["mappings"][0]["data_type"] == "uint16"
+
+
+async def test_edit_legacy_mapping_shows_override_expanded(hass, free_port):
+    hass.states.async_set("sensor.a", "12.3")
+    entry = await setup_entry(hass, free_port, [LEGACY_FLOAT])
+    result = await edit_first(hass, entry)
+    advanced = result["data_schema"].schema["advanced"]
+    assert advanced.options["collapsed"] is False
+
+
+async def test_confirm_warns_negative_from_bounds(hass, free_port):
+    hass.states.async_set("input_number.sp", "5", {"min": -10, "max": 40, "step": 0.5})
+    entry = await setup_entry(hass, free_port)
+    result, _ = await add_mapping(hass, entry, "input_number.sp", 0, negative=False)
+    assert result.get("errors") == {"base": "warn_negative"}
+
+
+async def test_confirm_bounds_suggestion_saves_without_max_warning(hass, free_port):
+    hass.states.async_set("number.n", "150", {"min": 0, "max": 100, "step": 1})
+    entry = await setup_entry(hass, free_port)
+    result, defaults = await add_mapping(hass, entry, "number.n", 0)
+    assert defaults["max_value"] == 100
+    assert result.get("errors") is None
+    assert result["type"] is FlowResultType.CREATE_ENTRY

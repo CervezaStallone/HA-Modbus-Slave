@@ -39,7 +39,7 @@ from .const import (
     REG_WRITABLE_DOMAINS,
     SITE_URL,
 )
-from .registers import (  # all used by the confirm step above (prefill, choice, preview)
+from .registers import (
     Answers,
     DataType,
     Evidence,
@@ -54,6 +54,8 @@ from .registers import (  # all used by the confirm step above (prefill, choice,
 )
 from .server import parse_networks
 from .suggest import async_gather_evidence
+
+_AUTO = {"data_type": "auto", "scale": "1", "signed": False}  # Advanced section: no override
 
 
 def _number(lo: int, hi: int) -> NumberSelector:
@@ -240,9 +242,11 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
             entity_id = user_input["entity"]
             domain = entity_id.split(".", 1)[0]
             evidence = await async_gather_evidence(self.hass, entity_id)
+            # a sensor's device class says it is numeric even while unavailable; other
+            # domains (cover, media_player, ...) have device classes with text states
             numeric = has_numbers(evidence) or (
-                evidence.device_class is not None
-                and evidence.device_class not in NON_NUMERIC_DEVICE_CLASSES
+                domain == "sensor"
+                and evidence.device_class not in (None, *NON_NUMERIC_DEVICE_CLASSES)
             )
             if domain in BIT_DOMAINS or numeric:
                 self._edit_index = None
@@ -330,6 +334,12 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
         placeholders = {"conflict": ""}
         if user_input is not None:
             shown = self._choice(self._form)
+            answers = ("negative", "decimals", "max_value")
+            if user_input["advanced"] == self._form["advanced"] != _AUTO and any(
+                user_input.get(k) != self._form.get(k) for k in answers
+            ):
+                # the user changed an answer, not the preset type: the answers win
+                user_input = {**user_input, "advanced": _AUTO}
             self._form = {"entity_id": self._form["entity_id"], **user_input}
             choice = self._choice(self._form)
             confirmed = user_input == self._pending  # same input again: user saw the notice
@@ -402,7 +412,7 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
                     vol.Required("signed", default=advanced["signed"]): BooleanSelector(),
                 }
             ),
-            {"collapsed": True},
+            {"collapsed": advanced["data_type"] == "auto"},  # an active override stays visible
         )
         return self.async_show_form(
             step_id="confirm",
@@ -416,9 +426,11 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
         if self._is_bit or user_input["advanced"]["data_type"] != "auto":
             return ""
         ev = self._evidence
-        if not user_input["negative"] and any(v is not None and v < 0 for v in (ev.lo, ev.current)):
+        # a number's own range is the truth; its history can't widen it
+        lows = (ev.bounds[0],) if ev.bounds else (ev.lo, ev.current)
+        if not user_input["negative"] and any(v is not None and v < 0 for v in lows):
             return "warn_negative"
-        seen = [abs(v) for v in (ev.lo, ev.hi) if v is not None]
+        seen = [abs(v) for v in (ev.bounds or (ev.lo, ev.hi)) if v is not None]
         if seen and float(user_input["max_value"]) < max(seen):
             return "warn_max"
         return ""
@@ -433,7 +445,7 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
         return {
             "writable": False,
             "fallback": 0,
-            "advanced": {"data_type": "auto", "scale": "1", "signed": False},
+            "advanced": _AUTO,
             **base,
             "negative": answers.negative,
             "decimals": str(answers.decimals),
