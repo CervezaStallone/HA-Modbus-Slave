@@ -77,8 +77,13 @@ async def test_user_port_in_use(hass, free_port):
     assert result["errors"] == {"base": "port_in_use"}
 
 
-async def test_user_duplicate_port(hass, free_port):
-    MockConfigEntry(domain=DOMAIN, unique_id=str(free_port)).add_to_hass(hass)
+async def test_user_duplicate_port_and_slave_id(hass, free_port):
+    MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=f"{free_port}-1",
+        data={"slave_id": 1, "port": free_port},
+        minor_version=2,
+    ).add_to_hass(hass)
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -89,11 +94,56 @@ async def test_user_duplicate_port(hass, free_port):
     assert result["reason"] == "already_configured"
 
 
+async def test_user_second_slave_on_a_used_port(hass, free_port):
+    await setup_entry(hass, free_port, allowed_ips=["10.0.0.0/24"])
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 2, "port": free_port, "allowed_ips": "10.0.0.0/24"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["result"].unique_id == f"{free_port}-2"
+
+
+async def test_user_shared_port_needs_same_settings(hass, free_port):
+    await setup_entry(hass, free_port)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 2, "port": free_port, "allowed_ips": "10.0.0.5"}
+    )
+    assert result["errors"] == {"base": "port_settings_differ"}
+
+
+async def test_reconfigure_rejects_slave_id_taken_on_port(hass, free_port):
+    await setup_entry(hass, free_port)
+    other = await setup_entry(hass, free_port, slave_id=2)
+    result = await other.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 1, "port": free_port}
+    )
+    assert result["errors"] == {"base": "slave_id_in_use"}
+
+
+async def test_migration_sets_port_and_slave_id_unique_id(hass, free_port):
+    entry = MockConfigEntry(
+        domain=DOMAIN, unique_id=str(free_port), data={"slave_id": 3, "port": free_port}
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.unique_id == f"{free_port}-3"
+    assert entry.minor_version == 2
+
+
 async def setup_entry(hass, port, mappings=(), **data):
+    data = {"slave_id": 1, "port": port, **data}
     entry = MockConfigEntry(
         domain=DOMAIN,
-        unique_id=str(port),
-        data={"slave_id": 1, "port": port, **data},
+        unique_id=f"{port}-{data['slave_id']}",
+        data=data,
         options={"mappings": list(mappings)},
     )
     entry.add_to_hass(hass)
@@ -119,7 +169,7 @@ async def test_reconfigure_changes_port(hass, free_port):
         "float_support": False,
         "share_usage": False,  # opt-in: an entry without the key counts as off
     }
-    assert entry.unique_id == str(new_port)
+    assert entry.unique_id == f"{new_port}-9"
     # old port is free again, new port is held by the reloaded server
     blocker = await asyncio.start_server(lambda _r, _w: None, port=free_port)
     blocker.close()
