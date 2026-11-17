@@ -217,7 +217,10 @@ class ModbusSlaveConfigFlow(ConfigFlow, domain=DOMAIN):
                 return self.async_update_reload_and_abort(
                     entry,
                     unique_id=_unique_id(data),
-                    title=_title(data[CONF_SLAVE_ID], data[CONF_PORT]),
+                    # a name the user gave the entry stays; only our own title follows the change
+                    title=_title(data[CONF_SLAVE_ID], data[CONF_PORT])
+                    if entry.title == _title(entry.data[CONF_SLAVE_ID], entry.data[CONF_PORT])
+                    else entry.title,
                     data=data,
                 )
             errors["base"] = error
