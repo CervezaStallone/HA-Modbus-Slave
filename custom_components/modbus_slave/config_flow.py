@@ -25,6 +25,7 @@ from .const import (
     BIT_DOMAINS,
     BIT_WRITABLE_DOMAINS,
     CONF_ALLOWED_IPS,
+    CONF_FLOAT_SUPPORT,
     CONF_HOST,
     CONF_MAPPINGS,
     CONF_PORT,
@@ -54,6 +55,9 @@ def _server_schema(data: dict[str, Any]) -> vol.Schema:
                 CONF_ALLOWED_IPS, default=", ".join(data.get(CONF_ALLOWED_IPS, []))
             ): TextSelector(),
             vol.Optional(
+                CONF_FLOAT_SUPPORT, default=data.get(CONF_FLOAT_SUPPORT, False)
+            ): BooleanSelector(),
+            vol.Optional(
                 CONF_SHARE_USAGE, default=data.get(CONF_SHARE_USAGE, False)
             ): BooleanSelector(),
         }
@@ -77,6 +81,7 @@ def _parse_server(user_input: dict[str, Any]) -> tuple[dict[str, Any], str | Non
         CONF_PORT: int(user_input[CONF_PORT]),
         CONF_HOST: host,
         CONF_ALLOWED_IPS: allowed,
+        CONF_FLOAT_SUPPORT: bool(user_input.get(CONF_FLOAT_SUPPORT, False)),
         CONF_SHARE_USAGE: bool(user_input.get(CONF_SHARE_USAGE, False)),
     }, None
 

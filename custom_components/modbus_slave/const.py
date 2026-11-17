@@ -9,6 +9,7 @@ CONF_PORT = "port"
 CONF_HOST = "host"
 CONF_ALLOWED_IPS = "allowed_ips"
 CONF_MAPPINGS = "mappings"
+CONF_FLOAT_SUPPORT = "float_support"  # entry data; master reads float32, off by default
 
 DEFAULT_SLAVE_ID = 1
 DEFAULT_PORT = 502

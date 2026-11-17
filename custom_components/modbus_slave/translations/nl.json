@@ -9,11 +9,13 @@
           "port": "TCP-poort",
           "host": "Luisteradres",
           "allowed_ips": "Toegestane masters",
+          "float_support": "Master kan kommagetallen (float) lezen",
           "share_usage": "Gebruiksstatistieken delen"
         },
         "data_description": {
           "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
           "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
+          "float_support": "Vink dit aan als je PLC of SCADA 32-bit floats kan lezen (vaak REAL of FLOAT genoemd, 2 registers). Waarden met decimalen worden dan exact verstuurd. Laat het uit als je master alleen hele getallen leest, of als je het niet zeker weet: waarden gaan dan als heel getal met een schaalfactor (21,5 °C → 215, de master deelt door 10). Dat kan elke master lezen. Omzetten geldt alleen voor nieuwe voorstellen, niet voor bestaande mappings.",
           "share_usage": "Staat standaard uit; er wordt niets verstuurd tenzij je het aanvinkt. Vink dit alsjeblieft aan: weten hoeveel installaties actief zijn en op welke versie, bepaalt waar mijn tijd voor onderhoud en ondersteuning naartoe gaat. Aangevinkt stuurt het elke 6 uur alleen een willekeurige installatie-ID en de versie van deze integratie; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({site_url}/nl/privacy/)"
         }
       },
@@ -24,11 +26,13 @@
           "port": "TCP-poort",
           "host": "Luisteradres",
           "allowed_ips": "Toegestane masters",
+          "float_support": "Master kan kommagetallen (float) lezen",
           "share_usage": "Gebruiksstatistieken delen"
         },
         "data_description": {
           "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
           "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
+          "float_support": "Vink dit aan als je PLC of SCADA 32-bit floats kan lezen (vaak REAL of FLOAT genoemd, 2 registers). Waarden met decimalen worden dan exact verstuurd. Laat het uit als je master alleen hele getallen leest, of als je het niet zeker weet: waarden gaan dan als heel getal met een schaalfactor (21,5 °C → 215, de master deelt door 10). Dat kan elke master lezen. Omzetten geldt alleen voor nieuwe voorstellen, niet voor bestaande mappings.",
           "share_usage": "Vink dit alsjeblieft aan: weten hoeveel installaties actief zijn en op welke versie, bepaalt waar mijn tijd voor onderhoud en ondersteuning naartoe gaat. Aangevinkt stuurt het elke 6 uur alleen een willekeurige installatie-ID en de versie van deze integratie; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({site_url}/nl/privacy/)"
         }
       }

@@ -25,6 +25,7 @@ async def test_user_creates_entry(hass, free_port):
         "port": free_port,
         "host": "",
         "allowed_ips": [],
+        "float_support": False,
         "share_usage": False,
     }
 
@@ -39,6 +40,7 @@ async def test_user_defaults(hass):
         "port": 502,
         "host": "",
         "allowed_ips": "",
+        "float_support": False,
         "share_usage": False,
     }
 
@@ -114,6 +116,7 @@ async def test_reconfigure_changes_port(hass, free_port):
         "port": new_port,
         "host": "",
         "allowed_ips": [],
+        "float_support": False,
         "share_usage": False,  # opt-in: an entry without the key counts as off
     }
     assert entry.unique_id == str(new_port)
@@ -328,3 +331,30 @@ async def test_reconfigure_shows_current_allowlist(hass, free_port):
     result = await entry.start_reconfigure_flow(hass)
     defaults = {str(k): k.default() for k in result["data_schema"].schema}
     assert defaults["allowed_ips"] == "10.0.0.5/32"
+
+
+async def test_float_support_set_and_reconfigured(hass, free_port):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 1, "port": free_port, "float_support": True}
+    )
+    await hass.async_block_till_done()
+    entry = hass.config_entries.async_get_entry(result["result"].entry_id)
+    assert entry.data["float_support"] is True
+    mappings = [{"entity_id": "sensor.a", "address": 0, "data_type": "float32"}]
+    hass.config_entries.async_update_entry(entry, options={"mappings": mappings})
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"slave_id": 1, "port": free_port, "float_support": False}
+    )
+    await hass.async_block_till_done()
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data["float_support"] is False
+    assert entry.options["mappings"] == mappings

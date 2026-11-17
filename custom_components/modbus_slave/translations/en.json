@@ -9,11 +9,13 @@
           "port": "TCP port",
           "host": "Listen address",
           "allowed_ips": "Allowed masters",
+          "float_support": "Master can read floating point values",
           "share_usage": "Share usage statistics"
         },
         "data_description": {
           "host": "IP address of this Home Assistant to listen on. Leave empty to listen on all interfaces.",
           "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone.",
+          "float_support": "Tick this if your PLC or SCADA can read 32-bit floats (often called REAL or FLOAT, 2 registers). Decimal values are then sent exactly. Leave it off if your master only reads whole numbers, or if you're not sure: values are then sent as whole numbers with a scale factor (21.5 °C → 215, the master divides by 10). Every master can read that. Changing this only affects new suggestions, not existing mappings.",
           "share_usage": "Off by default; nothing is sent unless you tick it. Please tick this: knowing how many installations are active and on which version is how I decide where maintenance and support time goes. When ticked, it sends every 6 hours only a random installation ID and the version of this integration; the server adds the country. Never addresses, entities, mappings or values. [Privacy statement]({site_url}/en/privacy/)"
         }
       },
@@ -24,11 +26,13 @@
           "port": "TCP port",
           "host": "Listen address",
           "allowed_ips": "Allowed masters",
+          "float_support": "Master can read floating point values",
           "share_usage": "Share usage statistics"
         },
         "data_description": {
           "host": "IP address of this Home Assistant to listen on. Leave empty to listen on all interfaces.",
           "allowed_ips": "IP addresses or ranges (CIDR) that may connect, separated by commas, e.g. 192.168.1.10, 10.0.5.0/24. Leave empty to allow everyone.",
+          "float_support": "Tick this if your PLC or SCADA can read 32-bit floats (often called REAL or FLOAT, 2 registers). Decimal values are then sent exactly. Leave it off if your master only reads whole numbers, or if you're not sure: values are then sent as whole numbers with a scale factor (21.5 °C → 215, the master divides by 10). Every master can read that. Changing this only affects new suggestions, not existing mappings.",
           "share_usage": "Please tick this: knowing how many installations are active and on which version is how I decide where maintenance and support time goes. When ticked, it sends every 6 hours only a random installation ID and the version of this integration; the server adds the country. Never addresses, entities, mappings or values. [Privacy statement]({site_url}/en/privacy/)"
         }
       }
