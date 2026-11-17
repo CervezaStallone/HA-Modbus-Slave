@@ -60,8 +60,7 @@
       "add_mapping": {
         "title": "Mapping toevoegen",
         "data": {
-          "entity": "Entity",
-          "address": "Startadres"
+          "entity": "Entity"
         }
       },
       "edit_mapping": {
@@ -78,7 +77,7 @@
       },
       "confirm": {
         "title": "{entity}",
-        "description": "Nu: {current} · Gezien: {lo} … {hi} ({days} dagen)\nResultaat: {result_type} — {registers} register(s). {example_value} wordt verstuurd als [{example_words}].\n\nBeantwoord de vragen over de waarde; het datatype volgt daaruit. Schrijfbaar: iedereen die deze poort kan bereiken, kan deze entity bedienen. Modbus TCP heeft geen authenticatie.",
+        "description": "Nu: {current} · Gezien: {lo} … {hi} ({days} dagen)\nVoorstel: de master leest {registers} register(s) als {result_type}. {example_value} wordt verstuurd als [{example_words}].\n\nHet voorstel volgt uit je antwoorden hieronder. Pas een antwoord aan en verstuur om het nieuwe voorstel te zien. Schrijfbaar: iedereen die deze poort kan bereiken, kan deze entity bedienen. Modbus TCP heeft geen authenticatie.",
         "data": {
           "address": "Startadres",
           "negative": "Kan negatief worden",
@@ -116,7 +115,7 @@
       "value_too_large": "Deze waarde past niet, zelfs niet in 2 registers. Bewaar minder decimalen, of zet floats aan voor deze server.",
       "warn_negative": "De historie toont negatieve waarden. Verstuur opnieuw om je keuze te houden.",
       "warn_max": "De historie toont hogere waarden dan dit. Verstuur opnieuw om je keuze te houden.",
-      "result_changed": "Je antwoorden veranderden het datatype. Controleer het resultaat hierboven en verstuur opnieuw om op te slaan."
+      "result_changed": "Nieuw voorstel: {result_type}. Controleer het hierboven en verstuur opnieuw om op te slaan."
     }
   },
   "selector": {
@@ -129,8 +128,8 @@
         "uint32": "uint32",
         "int32": "int32",
         "float32": "float32",
-        "scaled16": "scaled16",
-        "scaled32": "scaled32"
+        "scaled16": "scaled16 (16-bit geheel getal ÷ schaal)",
+        "scaled32": "scaled32 (32-bit geheel getal ÷ schaal)"
       }
     }
   }

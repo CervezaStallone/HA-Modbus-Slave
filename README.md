@@ -47,7 +47,7 @@ In plain terms: everything Home Assistant knows — sensors, switches, setpoints
 - **Simple setup** — slave ID and port (default `502`), and Home Assistant answers Modbus TCP requests
 - **Allowed masters** — optionally accept connections only from listed IP addresses or ranges; everyone else is disconnected immediately
 - **Listen address** — optionally bind to one interface (e.g. your PLC VLAN) instead of all
-- **Map any entity** — pick an entity and a start address; the register follows the entity's state
+- **Map any entity** — pick an entity; the first free address is filled in and the register follows the entity's state
 - **Guided data types** — answer three plain questions about the value (can it be negative, how many decimals, how big can it get); the integration picks the type. The answers are pre-filled from the entity's range, device class, display precision and recorder history
 - **Fits your master** — tell it once per server whether your master reads floats; otherwise decimal values become whole numbers with a scale factor (21.5 → 215)
 - **Override when needed** — `uint16`, `int16`, `uint32`, `int32`, `float32`, `scaled16` or `scaled32` (value × 10/100/1000 in one or two registers)
@@ -144,7 +144,7 @@ Go to **Settings → Devices & Services → Add Integration** and search for **M
 
 ### 3. Add your first mapping
 
-Click **Configure** → **Add mapping**, pick an entity and a start address. The next screen shows the value, its history and the suggested type, e.g. *Result: scaled16, signed, ×10 — 1 register. 12.3 is sent as [123]*. Check the three answers, click **Submit** — the master can read it right away.
+Click **Configure** → **Add mapping** and pick an entity. The next screen shows the value, its history, the first free start address and what the master should read, e.g. *Proposal: the master reads 1 register(s) as int16 ÷ 10 · -3276.8 … 3276.7. 12.3 is sent as [123]*. Check the three answers, click **Submit** — the master can read it right away. Change an answer and the proposal (and the address, if you left it as proposed) updates before saving.
 
 ---
 
@@ -154,7 +154,7 @@ After setup, click **Configure** on the integration card. A menu opens with:
 
 | Entry | What it does |
 |---|---|
-| **Add mapping** | Pick an entity and start address; check the pre-filled answers about the value |
+| **Add mapping** | Pick an entity; check the proposed address and the pre-filled answers about the value |
 | **Edit mapping** | Change the address, answers, type, writable flag or fallback of a mapping. Saving without changes keeps the type exactly as it was. Mappings whose entity no longer exists are marked *(missing)* |
 | **Remove mappings** | Select one or more mappings to remove |
 
@@ -162,7 +162,7 @@ Every mapping has these settings:
 
 | Setting | What it does | Default |
 |---|---|---|
-| **Start address** | First address of the mapping (0–65535) | — |
+| **Start address** | First address of the mapping (0–65535) | First free address that fits the type |
 | **Can be negative** | Whether the value can drop below zero | From the range, history and device class |
 | **Decimals to keep** | Digits after the decimal point the master needs (0–3) | From the display precision, step or history |
 | **Highest expected value** | The largest value, ignoring the sign | From the range, or twice the highest value seen |
