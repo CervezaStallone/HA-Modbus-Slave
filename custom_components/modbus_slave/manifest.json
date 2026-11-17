@@ -1,6 +1,7 @@
 {
   "domain": "modbus_slave",
   "name": "Modbus Slave",
+  "after_dependencies": ["recorder"],
   "codeowners": ["@CervezaStallone"],
   "config_flow": true,
   "documentation": "https://github.com/CervezaStallone/HA-Modbus-Slave",

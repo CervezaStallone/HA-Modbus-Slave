@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <strong>HACS Compatible</strong> · GUI-only setup · Automatic data types · Optional write-back
+  <strong>HACS Compatible</strong> · GUI-only setup · Guided data types · Optional write-back
 </p>
 
 ---
@@ -48,8 +48,9 @@ In plain terms: everything Home Assistant knows — sensors, switches, setpoints
 - **Allowed masters** — optionally accept connections only from listed IP addresses or ranges; everyone else is disconnected immediately
 - **Listen address** — optionally bind to one interface (e.g. your PLC VLAN) instead of all
 - **Map any entity** — pick an entity and a start address; the register follows the entity's state
-- **Automatic data types** — on/off entities become a bit, numbers with a whole-number range become `uint16`/`int16`, everything else `float32`
-- **Override when needed** — `uint16`, `int16`, `uint32`, `int32`, `float32` or `scaled16` (value × 10/100/1000 in one register)
+- **Guided data types** — answer three plain questions about the value (can it be negative, how many decimals, how big can it get); the integration picks the type. The answers are pre-filled from the entity's range, device class, display precision and recorder history
+- **Fits your master** — tell it once per server whether your master reads floats; otherwise decimal values become whole numbers with a scale factor (21.5 → 215)
+- **Override when needed** — `uint16`, `int16`, `uint32`, `int32`, `float32`, `scaled16` or `scaled32` (value × 10/100/1000 in one or two registers)
 - **Works with every master** — coils and discrete inputs return the same bits, holding and input registers the same registers, so masters that only support FC3 still see everything
 - **Optional write-back** — tick *Writable* to let the master switch entities or set numbers, with proper Modbus exception codes on invalid writes
 - **Real-time** — state changes are in the registers immediately, no polling
@@ -136,13 +137,14 @@ Go to **Settings → Devices & Services → Add Integration** and search for **M
 | **TCP port** | The port the Modbus server listens on (1–65535) | `502` |
 | **Listen address** | IP address of this Home Assistant to listen on; empty = all interfaces | All |
 | **Allowed masters** | IP addresses or CIDR ranges that may connect, comma-separated (e.g. `192.168.1.10, 10.0.5.0/24`); empty = everyone | Everyone |
+| **Master can read floating point values** | Tick when your master reads 32-bit floats (REAL/FLOAT). Off: decimal values are suggested as whole numbers with a scale factor (21.5 → 215), which every master reads. Only affects new suggestions | Off |
 | **Share usage statistics** | Sends a random installation ID and the integration version every 6 hours; see [Privacy](#privacy-and-usage-statistics) | Off |
 
 > **Port 502** is a privileged port. It works on Home Assistant OS and Supervised. On Container or Core installs running as non-root, pick a port ≥ 1024 (e.g. `5020`) or grant `CAP_NET_BIND_SERVICE`. Setup tells you when the port can't be opened.
 
 ### 3. Add your first mapping
 
-Click **Configure** → **Add mapping**, pick an entity and a start address. The next screen shows what the integration detected, e.g. `REG 100–101 float32`. Change anything you like and click **Submit** — the master can read it right away.
+Click **Configure** → **Add mapping**, pick an entity and a start address. The next screen shows the value, its history and the suggested type, e.g. *Result: scaled16, signed, ×10 — 1 register. 12.3 is sent as [123]*. Check the three answers, click **Submit** — the master can read it right away.
 
 ---
 
@@ -152,8 +154,8 @@ After setup, click **Configure** on the integration card. A menu opens with:
 
 | Entry | What it does |
 |---|---|
-| **Add mapping** | Pick an entity and start address; confirm or change the detected type |
-| **Edit mapping** | Change the address, type, scale, writable flag or fallback of a mapping. Mappings whose entity no longer exists are marked *(missing)* |
+| **Add mapping** | Pick an entity and start address; check the pre-filled answers about the value |
+| **Edit mapping** | Change the address, answers, type, writable flag or fallback of a mapping. Saving without changes keeps the type exactly as it was. Mappings whose entity no longer exists are marked *(missing)* |
 | **Remove mappings** | Select one or more mappings to remove |
 
 Every mapping has these settings:
@@ -161,9 +163,11 @@ Every mapping has these settings:
 | Setting | What it does | Default |
 |---|---|---|
 | **Start address** | First address of the mapping (0–65535) | — |
-| **Data type** | See [Data types](#data-types) | Detected |
-| **Scale factor** | Multiplier for `scaled16` (1, 10, 100, 1000) | From the number of decimals |
-| **Signed** | `scaled16` as signed instead of unsigned | From the entity's range |
+| **Can be negative** | Whether the value can drop below zero | From the range, history and device class |
+| **Decimals to keep** | Digits after the decimal point the master needs (0–3) | From the display precision, step or history |
+| **Highest expected value** | The largest value, ignoring the sign | From the range, or twice the highest value seen |
+| **Advanced → Data type** | *Automatic* (from the answers) or a type of your own. See [Data types](#data-types) | Automatic |
+| **Advanced → Scale / Signed** | Only for `scaled16` / `scaled32` with a type of your own | 1 / off |
 | **Writable** | Let the master control this entity. See [How writes work](#how-writes-work) | Off |
 | **Value when unavailable** | What the master reads while the entity is `unavailable` or `unknown` | `0` |
 
@@ -171,22 +175,27 @@ Changes apply immediately — the integration reloads itself; Home Assistant doe
 
 ### Reconfigure
 
-To change the slave ID, port, listen address, allowed masters or usage statistics: **Settings → Devices & Services → Modbus Slave → ⋮ → Reconfigure**. Mappings are kept.
+To change the slave ID, port, listen address, allowed masters, float support or usage statistics: **Settings → Devices & Services → Modbus Slave → ⋮ → Reconfigure**. Mappings are kept.
 
 ---
 
 ## Data types
 
-The integration picks the type when you add a mapping:
+The integration asks three questions about the value and picks the smallest type that holds it exactly:
 
-| Entity | Detected type | Registers |
-|---|---|---|
-| `binary_sensor`, `switch`, `light`, `input_boolean`, `fan` | `bit` | 1 bit |
-| `number` / `input_number` with a whole-number step and a range inside 0–65535 | `uint16` | 1 |
-| `number` / `input_number` with a whole-number step and a range inside −32768–32767 | `int16` | 1 |
-| Other `number` / `input_number`, and every numeric `sensor` | `float32` | 2 |
+| Answers | Master reads floats | Type | Registers |
+|---|---|---|---|
+| On/off entity (`binary_sensor`, `switch`, `light`, `input_boolean`, `fan`) | — | `bit` | 1 bit |
+| 0 decimals, fits 0–65535 / −32768–32767 | — | `uint16` / `int16` | 1 |
+| 0 decimals, larger | — | `uint32` / `int32` | 2 |
+| Decimals, value × 10^decimals fits 16 bits | No | `scaled16` | 1 |
+| Decimals, larger | No | `scaled32` | 2 |
+| Decimals, value × 10^decimals ≤ 16,777,216 | Yes | `float32` | 2 |
+| Decimals, larger | Yes | `scaled32` | 2 |
 
-Sensors are always `float32`: their current value doesn't tell what they'll report later (20 °C now, 20.5 or −3 °C tomorrow), and `float32` is exact for every whole number up to 16,777,216.
+The answers are pre-filled: a `number`/`input_number` uses its own min/max/step exactly. A sensor uses its display precision, the last 30 days of history and a year of long-term statistics (so a winter low is known in summer), plus its device class: temperature, power, energy and current are treated as possibly negative. The suggested highest value is twice the highest value seen (a hundred times for meter readings that keep rising), rounded up to 1, 2 or 5 × 10ⁿ.
+
+If an answer contradicts the history, or your change gives a different type, the form shows that once; submit again to keep it.
 
 ### Encoding
 
@@ -195,6 +204,7 @@ Sensors are always `float32`: their current value doesn't tell what they'll repo
 | `bit` | 1 bit | `on` = 1, anything else = 0 |
 | `uint16` / `int16` | 1 | Two's complement for signed |
 | `scaled16` | 1 | `round(value × scale)` as `uint16` or `int16` |
+| `scaled32` | 2 | `round(value × scale)` as `uint32` or `int32`, high word first |
 | `uint32` / `int32` / `float32` | 2 | Big-endian, **high word first** (ABCD); IEEE-754 for floats |
 
 - Values outside the type's range are **clamped** to its min/max, and a warning is logged once.
@@ -235,7 +245,7 @@ The master gets an answer once Home Assistant has handled the call. The register
 |---|---|
 | `ILLEGAL_ADDRESS` (02) | Address not mapped, mapping read-only, or the write covers only part of a 32-bit value |
 | `ILLEGAL_VALUE` (03) | Value outside the entity's `min`/`max` |
-| `DEVICE_FAILURE` (04) | The Home Assistant service call failed |
+| `DEVICE_FAILURE` (04) | The Home Assistant service call failed, or the entity is unavailable or missing |
 
 ---
 

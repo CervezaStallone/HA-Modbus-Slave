@@ -9,6 +9,7 @@ CONF_PORT = "port"
 CONF_HOST = "host"
 CONF_ALLOWED_IPS = "allowed_ips"
 CONF_MAPPINGS = "mappings"
+CONF_FLOAT_SUPPORT = "float_support"  # entry data; master reads float32, off by default
 
 DEFAULT_SLAVE_ID = 1
 DEFAULT_PORT = 502
@@ -25,3 +26,22 @@ SITE_URL = "https://www.brdc.nl"  # privacy statement under /en/privacy/ and /nl
 TELEMETRY_TIMEOUT = 10  # seconds; fire-and-forget, no retries
 TELEMETRY_FIRST_DELAY = 600  # seconds after start
 TELEMETRY_INTERVAL = timedelta(hours=6)
+
+# Guided data type choice (registers.suggest_answers / choose_type)
+# Unknown classes are harmless. Signed only halves the range; unsigned breaks a negative value.
+SIGNED_DEVICE_CLASSES = {
+    "temperature",
+    "power",
+    "current",
+    "energy",
+    "reactive_power",
+    "power_factor",
+    "signal_strength",
+    "monetary",
+    "apparent_power",
+    "battery_power",
+}
+NON_NUMERIC_DEVICE_CLASSES = {"enum", "timestamp", "date"}
+HEADROOM = 2  # suggested max = highest value seen × this (calibration knob)
+HEADROOM_TOTAL = 100  # for meters (state_class total/total_increasing) that keep rising
+FLOAT32_EXACT = 16_777_216  # 2**24: float32 is exact for every integer up to here

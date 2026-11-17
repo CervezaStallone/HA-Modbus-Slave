@@ -9,50 +9,9 @@ from custom_components.modbus_slave.registers import (
     Mapping,
     RegisterTable,
     decode,
-    detect,
     encode,
     find_overlap,
 )
-
-
-@pytest.mark.parametrize("domain", ["binary_sensor", "switch", "light", "input_boolean", "fan"])
-def test_detect_bits(domain):
-    assert detect(domain, "on", {})["data_type"] == DataType.BIT
-
-
-@pytest.mark.parametrize(
-    ("attrs", "expected", "scale"),
-    [
-        ({"min": 0, "max": 100, "step": 1}, DataType.UINT16, 1),
-        ({"min": -10, "max": 100, "step": 1}, DataType.INT16, 1),
-        ({"min": 0, "max": 30, "step": 0.5}, DataType.FLOAT32, 10),
-        ({"min": 0, "max": 70000, "step": 1}, DataType.FLOAT32, 1),
-        ({"min": -40000, "max": 0, "step": 1}, DataType.FLOAT32, 1),
-    ],
-)
-def test_detect_number(attrs, expected, scale):
-    result = detect("input_number", "5", attrs)
-    assert result["data_type"] == expected
-    assert result["scale"] == scale
-
-
-def test_detect_sensor_is_float32_with_scale_suggestion():
-    assert detect("sensor", "20", {}) == {
-        "data_type": DataType.FLOAT32,
-        "scale": 1,
-        "signed": False,
-    }
-    assert detect("sensor", "-1.25", {}) == {
-        "data_type": DataType.FLOAT32,
-        "scale": 100,
-        "signed": True,
-    }
-    assert detect("sensor", "0.123456", {})["scale"] == 1000
-
-
-def test_detect_unsupported():
-    assert detect("sensor", "abc", {}) is None
-    assert detect("sensor", "unavailable", {}) is None
 
 
 def m(data_type, address=0, **kw):
@@ -128,3 +87,101 @@ def test_table_read_and_writable_lookup():
     assert table.writable_mapping_at("registers", 300, 1) is None  # unmapped
     assert table.writable_mapping_at("bits", 0, 1) is sw
     assert table.writable_mapping_at("registers", 0, 1) is None  # other space
+
+
+@pytest.mark.parametrize(
+    ("kw", "state", "words", "clamped"),
+    [
+        ({"scale": 10}, "12345.6", [0x0001, 0xE240], False),
+        ({"scale": 10, "signed": True}, "-1.5", [0xFFFF, 0xFFF1], False),
+        ({"scale": 1000}, "-1", [0, 0], True),
+    ],
+)
+def test_scaled32_encode(kw, state, words, clamped):
+    assert encode(m("scaled32", **kw), state) == (words, clamped)
+
+
+@pytest.mark.parametrize(
+    ("kw", "words", "value"),
+    [
+        ({"scale": 10}, [0x0001, 0xE240], 12345.6),
+        ({"scale": 10, "signed": True}, [0xFFFF, 0xFFF1], -1.5),
+    ],
+)
+def test_scaled32_decode(kw, words, value):
+    mapping = m("scaled32", **kw)
+    assert mapping.size == 2
+    assert decode(mapping, words) == pytest.approx(value)
+
+
+# --- guided type choice -------------------------------------------------------
+# referenced through the module so a missing name fails the test, not collection
+from custom_components.modbus_slave import registers as R  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(0, 10), (7, 10), (11, 20), (21, 50), (51, 100), (640, 1000), (1001, 2000)],
+)
+def test_nice_ceil(value, expected):
+    assert R.nice_ceil(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("answers", "float_ok", "expected"),
+    [
+        ((False, 0, 65535), False, ("uint16", 1, False)),
+        ((False, 0, 65536), False, ("uint32", 1, False)),
+        ((True, 0, 32767), True, ("int16", 1, False)),
+        ((True, 0, 32768), False, ("int32", 1, False)),
+        ((True, 1, 100), False, ("scaled16", 10, True)),
+        ((False, 1, 6553.5), False, ("scaled16", 10, False)),
+        ((False, 1, 6553.6), False, ("scaled32", 10, False)),
+        ((True, 1, 100), True, ("float32", 1, False)),
+        ((False, 2, 167772.16), True, ("float32", 1, False)),
+        ((False, 2, 167772.17), True, ("scaled32", 100, False)),
+        ((False, 0, 2**32), False, None),
+        ((True, 3, 1e7), False, None),
+    ],
+)
+def test_choose_type(answers, float_ok, expected):
+    choice = R.choose_type(R.Answers(*answers), float_ok)
+    if expected is None:
+        assert choice is None
+    else:
+        assert choice == R.TypeChoice(R.DataType(expected[0]), expected[1], expected[2])
+
+
+def test_suggest_answers_bounds_are_authoritative():
+    ev = R.Evidence(current=5, lo=-50, hi=900, bounds=(0, 30), decimals=1)
+    assert R.suggest_answers("input_number", ev) == R.Answers(False, 1, 30)
+
+
+def test_suggest_answers_temperature_without_negatives_is_signed():
+    ev = R.Evidence(
+        current=21.3, lo=15.0, hi=31.7, decimals=1, device_class="temperature", history_days=10
+    )
+    assert R.suggest_answers("sensor", ev) == R.Answers(True, 1, 100)
+
+
+def test_suggest_answers_meter_gets_big_headroom():
+    ev = R.Evidence(current=12000, lo=11000, hi=12000, decimals=1, state_class="total_increasing")
+    assert R.suggest_answers("sensor", ev).max_value == 2_000_000
+
+
+def test_suggest_answers_no_numbers():
+    assert R.suggest_answers("sensor", R.Evidence(device_class="power")) == R.Answers(True, 1, 1000)
+
+
+def test_answers_from_mapping():
+    ev = R.Evidence(hi=40, decimals=2)
+    scaled = m(DataType.SCALED16, scale=10, signed=True)
+    assert R.answers_from_mapping(scaled, ev) == R.Answers(True, 1, 100)
+    assert R.answers_from_mapping(m(DataType.UINT16), ev) == R.Answers(False, 0, 100)
+    assert R.answers_from_mapping(m(DataType.FLOAT32), ev).decimals == 2
+
+
+def test_has_numbers():
+    assert not R.has_numbers(R.Evidence(device_class="power"))
+    assert R.has_numbers(R.Evidence(hi=1))
+    assert R.has_numbers(R.Evidence(bounds=(0, 1)))

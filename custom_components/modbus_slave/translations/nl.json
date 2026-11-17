@@ -9,11 +9,13 @@
           "port": "TCP-poort",
           "host": "Luisteradres",
           "allowed_ips": "Toegestane masters",
+          "float_support": "Master kan kommagetallen (float) lezen",
           "share_usage": "Gebruiksstatistieken delen"
         },
         "data_description": {
           "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
           "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
+          "float_support": "Vink dit aan als je PLC of SCADA 32-bit floats kan lezen (vaak REAL of FLOAT genoemd, 2 registers). Waarden met decimalen worden dan exact verstuurd. Laat het uit als je master alleen hele getallen leest, of als je het niet zeker weet: waarden gaan dan als heel getal met een schaalfactor (21,5 °C → 215, de master deelt door 10). Dat kan elke master lezen. Omzetten geldt alleen voor nieuwe voorstellen, niet voor bestaande mappings.",
           "share_usage": "Staat standaard uit; er wordt niets verstuurd tenzij je het aanvinkt. Vink dit alsjeblieft aan: weten hoeveel installaties actief zijn en op welke versie, bepaalt waar mijn tijd voor onderhoud en ondersteuning naartoe gaat. Aangevinkt stuurt het elke 6 uur alleen een willekeurige installatie-ID en de versie van deze integratie; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({site_url}/nl/privacy/)"
         }
       },
@@ -24,11 +26,13 @@
           "port": "TCP-poort",
           "host": "Luisteradres",
           "allowed_ips": "Toegestane masters",
+          "float_support": "Master kan kommagetallen (float) lezen",
           "share_usage": "Gebruiksstatistieken delen"
         },
         "data_description": {
           "host": "IP-adres van deze Home Assistant waarop geluisterd wordt. Leeg = op alle interfaces.",
           "allowed_ips": "IP-adressen of bereiken (CIDR) die mogen verbinden, gescheiden door komma's, bijv. 192.168.1.10, 10.0.5.0/24. Leeg = iedereen.",
+          "float_support": "Vink dit aan als je PLC of SCADA 32-bit floats kan lezen (vaak REAL of FLOAT genoemd, 2 registers). Waarden met decimalen worden dan exact verstuurd. Laat het uit als je master alleen hele getallen leest, of als je het niet zeker weet: waarden gaan dan als heel getal met een schaalfactor (21,5 °C → 215, de master deelt door 10). Dat kan elke master lezen. Omzetten geldt alleen voor nieuwe voorstellen, niet voor bestaande mappings.",
           "share_usage": "Vink dit alsjeblieft aan: weten hoeveel installaties actief zijn en op welke versie, bepaalt waar mijn tijd voor onderhoud en ondersteuning naartoe gaat. Aangevinkt stuurt het elke 6 uur alleen een willekeurige installatie-ID en de versie van deze integratie; de server voegt het land toe. Nooit adressen, entities, mappings of waarden. [Privacyverklaring]({site_url}/nl/privacy/)"
         }
       }
@@ -74,14 +78,32 @@
       },
       "confirm": {
         "title": "{entity}",
-        "description": "Gedetecteerd: {summary}. Pas het type aan indien nodig. Schaal en signed gelden alleen voor scaled16. Schrijfbaar: iedereen die deze poort kan bereiken kan deze entity aansturen. Modbus TCP heeft geen authenticatie.",
+        "description": "Nu: {current} · Gezien: {lo} … {hi} ({days} dagen)\nResultaat: {result_type} — {registers} register(s). {example_value} wordt verstuurd als [{example_words}].\n\nBeantwoord de vragen over de waarde; het datatype volgt daaruit. Schrijfbaar: iedereen die deze poort kan bereiken, kan deze entity bedienen. Modbus TCP heeft geen authenticatie.",
         "data": {
           "address": "Startadres",
-          "data_type": "Datatype",
-          "scale": "Schaalfactor (scaled16)",
-          "signed": "Signed (scaled16)",
+          "negative": "Kan negatief worden",
+          "decimals": "Aantal decimalen",
+          "max_value": "Hoogste verwachte waarde",
           "writable": "Schrijfbaar door Modbus-master",
-          "fallback": "Waarde bij unavailable"
+          "fallback": "Waarde bij onbeschikbaar"
+        },
+        "data_description": {
+          "negative": "Vink aan als de waarde onder nul kan komen, bijv. een buitentemperatuur of teruggeleverd vermogen.",
+          "decimals": "Hoeveel cijfers achter de komma de master nodig heeft.",
+          "max_value": "De grootste waarde (zonder teken) die hij ooit bereikt. Vooraf ingevuld met ruimte over op basis van wat Home Assistant heeft gezien."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Geavanceerd: kies zelf het datatype",
+            "data": {
+              "data_type": "Datatype",
+              "scale": "Schaalfactor (scaled16/scaled32)",
+              "signed": "Signed (scaled16/scaled32)"
+            },
+            "data_description": {
+              "data_type": "Automatisch gebruikt je antwoorden hierboven. Elke andere keuze wordt letterlijk gebruikt en de vragen worden genegeerd."
+            }
+          }
         }
       }
     },
@@ -90,7 +112,26 @@
       "type_mismatch": "Gebruik 'bit' voor aan/uit-entities en een numeriek type voor numerieke entities.",
       "not_writable": "Deze entity kan met dit type niet worden aangestuurd. Schrijfbaar: switch, light, input_boolean, fan (bit); number, input_number (numeriek).",
       "address_out_of_range": "De mapping loopt voorbij adres 65535.",
-      "address_overlap": "Adresbereik overlapt met de mapping van {conflict}."
+      "address_overlap": "Adresbereik overlapt met de mapping van {conflict}.",
+      "value_too_large": "Deze waarde past niet, zelfs niet in 2 registers. Bewaar minder decimalen, of zet floats aan voor deze server.",
+      "warn_negative": "De historie toont negatieve waarden. Verstuur opnieuw om je keuze te houden.",
+      "warn_max": "De historie toont hogere waarden dan dit. Verstuur opnieuw om je keuze te houden.",
+      "result_changed": "Je antwoorden veranderden het datatype. Controleer het resultaat hierboven en verstuur opnieuw om op te slaan."
+    }
+  },
+  "selector": {
+    "data_type": {
+      "options": {
+        "auto": "Automatisch",
+        "bit": "bit",
+        "uint16": "uint16",
+        "int16": "int16",
+        "uint32": "uint32",
+        "int32": "int32",
+        "float32": "float32",
+        "scaled16": "scaled16",
+        "scaled32": "scaled32"
+      }
     }
   }
 }
