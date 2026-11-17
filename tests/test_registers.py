@@ -9,50 +9,9 @@ from custom_components.modbus_slave.registers import (
     Mapping,
     RegisterTable,
     decode,
-    detect,
     encode,
     find_overlap,
 )
-
-
-@pytest.mark.parametrize("domain", ["binary_sensor", "switch", "light", "input_boolean", "fan"])
-def test_detect_bits(domain):
-    assert detect(domain, "on", {})["data_type"] == DataType.BIT
-
-
-@pytest.mark.parametrize(
-    ("attrs", "expected", "scale"),
-    [
-        ({"min": 0, "max": 100, "step": 1}, DataType.UINT16, 1),
-        ({"min": -10, "max": 100, "step": 1}, DataType.INT16, 1),
-        ({"min": 0, "max": 30, "step": 0.5}, DataType.FLOAT32, 10),
-        ({"min": 0, "max": 70000, "step": 1}, DataType.FLOAT32, 1),
-        ({"min": -40000, "max": 0, "step": 1}, DataType.FLOAT32, 1),
-    ],
-)
-def test_detect_number(attrs, expected, scale):
-    result = detect("input_number", "5", attrs)
-    assert result["data_type"] == expected
-    assert result["scale"] == scale
-
-
-def test_detect_sensor_is_float32_with_scale_suggestion():
-    assert detect("sensor", "20", {}) == {
-        "data_type": DataType.FLOAT32,
-        "scale": 1,
-        "signed": False,
-    }
-    assert detect("sensor", "-1.25", {}) == {
-        "data_type": DataType.FLOAT32,
-        "scale": 100,
-        "signed": True,
-    }
-    assert detect("sensor", "0.123456", {})["scale"] == 1000
-
-
-def test_detect_unsupported():
-    assert detect("sensor", "abc", {}) is None
-    assert detect("sensor", "unavailable", {}) is None
 
 
 def m(data_type, address=0, **kw):

@@ -78,14 +78,32 @@
       },
       "confirm": {
         "title": "{entity}",
-        "description": "Detected: {summary}. Change the type if needed. Scale and signed only apply to scaled16. Writable: anyone who can reach this port can control this entity. Modbus TCP has no authentication.",
+        "description": "Now: {current} · Seen: {lo} … {hi} ({days} days)\nResult: {result_type} — {registers} register(s). {example_value} is sent as [{example_words}].\n\nAnswer the questions about the value; the data type follows from them. Writable: anyone who can reach this port can control this entity. Modbus TCP has no authentication.",
         "data": {
           "address": "Start address",
-          "data_type": "Data type",
-          "scale": "Scale factor (scaled16)",
-          "signed": "Signed (scaled16)",
+          "negative": "Can be negative",
+          "decimals": "Decimals to keep",
+          "max_value": "Highest expected value",
           "writable": "Writable by Modbus master",
           "fallback": "Value when unavailable"
+        },
+        "data_description": {
+          "negative": "Tick if the value can drop below zero, e.g. an outdoor temperature or power fed back to the grid.",
+          "decimals": "How many digits after the decimal point the master needs.",
+          "max_value": "The largest value (ignoring the sign) it will ever reach. Pre-filled with room to spare from what Home Assistant has seen."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced: choose the data type yourself",
+            "data": {
+              "data_type": "Data type",
+              "scale": "Scale factor (scaled16/scaled32)",
+              "signed": "Signed (scaled16/scaled32)"
+            },
+            "data_description": {
+              "data_type": "Automatic uses your answers above. Any other choice is used as given and the questions are ignored."
+            }
+          }
         }
       }
     },
@@ -94,7 +112,26 @@
       "type_mismatch": "Use 'bit' for on/off entities and a numeric type for numeric entities.",
       "not_writable": "This entity cannot be controlled with this type. Writable: switch, light, input_boolean, fan (bit); number, input_number (numeric).",
       "address_out_of_range": "The mapping runs past address 65535.",
-      "address_overlap": "Address range overlaps the mapping of {conflict}."
+      "address_overlap": "Address range overlaps the mapping of {conflict}.",
+      "value_too_large": "This value does not fit, even in 2 registers. Keep fewer decimals, or enable floats for this server.",
+      "warn_negative": "History shows negative values. Submit again to keep your choice.",
+      "warn_max": "History shows higher values than this. Submit again to keep your choice.",
+      "result_changed": "Your answers changed the data type. Check the result above and submit again to save."
+    }
+  },
+  "selector": {
+    "data_type": {
+      "options": {
+        "auto": "Automatic",
+        "bit": "bit",
+        "uint16": "uint16",
+        "int16": "int16",
+        "uint32": "uint32",
+        "int32": "int32",
+        "float32": "float32",
+        "scaled16": "scaled16",
+        "scaled32": "scaled32"
+      }
     }
   }
 }

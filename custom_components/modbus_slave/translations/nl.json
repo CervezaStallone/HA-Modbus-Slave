@@ -78,14 +78,32 @@
       },
       "confirm": {
         "title": "{entity}",
-        "description": "Gedetecteerd: {summary}. Pas het type aan indien nodig. Schaal en signed gelden alleen voor scaled16. Schrijfbaar: iedereen die deze poort kan bereiken kan deze entity aansturen. Modbus TCP heeft geen authenticatie.",
+        "description": "Nu: {current} · Gezien: {lo} … {hi} ({days} dagen)\nResultaat: {result_type} — {registers} register(s). {example_value} wordt verstuurd als [{example_words}].\n\nBeantwoord de vragen over de waarde; het datatype volgt daaruit. Schrijfbaar: iedereen die deze poort kan bereiken, kan deze entity bedienen. Modbus TCP heeft geen authenticatie.",
         "data": {
           "address": "Startadres",
-          "data_type": "Datatype",
-          "scale": "Schaalfactor (scaled16)",
-          "signed": "Signed (scaled16)",
+          "negative": "Kan negatief worden",
+          "decimals": "Aantal decimalen",
+          "max_value": "Hoogste verwachte waarde",
           "writable": "Schrijfbaar door Modbus-master",
-          "fallback": "Waarde bij unavailable"
+          "fallback": "Waarde bij onbeschikbaar"
+        },
+        "data_description": {
+          "negative": "Vink aan als de waarde onder nul kan komen, bijv. een buitentemperatuur of teruggeleverd vermogen.",
+          "decimals": "Hoeveel cijfers achter de komma de master nodig heeft.",
+          "max_value": "De grootste waarde (zonder teken) die hij ooit bereikt. Vooraf ingevuld met ruimte over op basis van wat Home Assistant heeft gezien."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Geavanceerd: kies zelf het datatype",
+            "data": {
+              "data_type": "Datatype",
+              "scale": "Schaalfactor (scaled16/scaled32)",
+              "signed": "Signed (scaled16/scaled32)"
+            },
+            "data_description": {
+              "data_type": "Automatisch gebruikt je antwoorden hierboven. Elke andere keuze wordt letterlijk gebruikt en de vragen worden genegeerd."
+            }
+          }
         }
       }
     },
@@ -94,7 +112,26 @@
       "type_mismatch": "Gebruik 'bit' voor aan/uit-entities en een numeriek type voor numerieke entities.",
       "not_writable": "Deze entity kan met dit type niet worden aangestuurd. Schrijfbaar: switch, light, input_boolean, fan (bit); number, input_number (numeriek).",
       "address_out_of_range": "De mapping loopt voorbij adres 65535.",
-      "address_overlap": "Adresbereik overlapt met de mapping van {conflict}."
+      "address_overlap": "Adresbereik overlapt met de mapping van {conflict}.",
+      "value_too_large": "Deze waarde past niet, zelfs niet in 2 registers. Bewaar minder decimalen, of zet floats aan voor deze server.",
+      "warn_negative": "De historie toont negatieve waarden. Verstuur opnieuw om je keuze te houden.",
+      "warn_max": "De historie toont hogere waarden dan dit. Verstuur opnieuw om je keuze te houden.",
+      "result_changed": "Je antwoorden veranderden het datatype. Controleer het resultaat hierboven en verstuur opnieuw om op te slaan."
+    }
+  },
+  "selector": {
+    "data_type": {
+      "options": {
+        "auto": "Automatisch",
+        "bit": "bit",
+        "uint16": "uint16",
+        "int16": "int16",
+        "uint32": "uint32",
+        "int32": "int32",
+        "float32": "float32",
+        "scaled16": "scaled16",
+        "scaled32": "scaled32"
+      }
     }
   }
 }

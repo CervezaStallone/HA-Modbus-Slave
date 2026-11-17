@@ -94,38 +94,12 @@ def decimals_of(value: str) -> int:
     return max(0, -exponent) if isinstance(exponent, int) else 0
 
 
-def _suggested_scale(value: str) -> int:
-    return min(10 ** decimals_of(value), 1000)
-
-
 def to_float(state: str) -> float | None:
     try:
         value = float(state)
     except (TypeError, ValueError):
         return None
     return value if math.isfinite(value) else None
-
-
-def detect(domain: str, state: str, attributes: dict) -> dict | None:
-    """Pick data type, scale suggestion and sign for an entity."""
-    if domain in BIT_DOMAINS:
-        return {"data_type": DataType.BIT, "scale": 1, "signed": False}
-
-    if domain in ("number", "input_number") and {"min", "max", "step"} <= attributes.keys():
-        lo, hi, step = attributes["min"], attributes["max"], attributes["step"]
-        signed = lo < 0
-        data_type = DataType.FLOAT32
-        if float(step).is_integer():
-            if 0 <= lo and hi <= 0xFFFF:
-                data_type = DataType.UINT16
-            elif -0x8000 <= lo and hi <= 0x7FFF:
-                data_type = DataType.INT16
-        return {"data_type": data_type, "scale": _suggested_scale(step), "signed": signed}
-
-    value = to_float(state)
-    if value is None:
-        return None
-    return {"data_type": DataType.FLOAT32, "scale": _suggested_scale(state), "signed": value < 0}
 
 
 def encode(mapping: Mapping, state: str) -> tuple[list, bool]:

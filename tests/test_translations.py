@@ -24,3 +24,29 @@ def test_english_equals_strings():
 
 def test_dutch_has_same_keys():
     assert keys(load("translations/nl.json")) == keys(load("strings.json"))
+
+
+def test_guided_confirm_step_is_translated():
+    strings = load("strings.json")["options"]
+    confirm = strings["step"]["confirm"]
+    assert {"address", "negative", "decimals", "max_value", "writable", "fallback"} <= set(
+        confirm["data"]
+    )
+    assert set(confirm["sections"]["advanced"]["data"]) == {"data_type", "scale", "signed"}
+    for placeholder in ("{current}", "{result_type}", "{example_words}"):
+        assert placeholder in confirm["description"]
+    assert {"value_too_large", "warn_negative", "warn_max", "result_changed"} <= set(
+        strings["error"]
+    )
+    types = load("strings.json")["selector"]["data_type"]["options"]
+    assert set(types) == {
+        "auto",
+        "bit",
+        "uint16",
+        "int16",
+        "uint32",
+        "int32",
+        "float32",
+        "scaled16",
+        "scaled32",
+    }

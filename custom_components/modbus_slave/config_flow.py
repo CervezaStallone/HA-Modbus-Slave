@@ -9,6 +9,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers.selector import (
     BooleanSelector,
     EntitySelector,
@@ -34,11 +35,25 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_SLAVE_ID,
     DOMAIN,
+    NON_NUMERIC_DEVICE_CLASSES,
     REG_WRITABLE_DOMAINS,
     SITE_URL,
 )
-from .registers import DataType, Mapping, detect, find_overlap
+from .registers import (  # all used by the confirm step above (prefill, choice, preview)
+    Answers,
+    DataType,
+    Evidence,
+    Mapping,
+    TypeChoice,
+    answers_from_mapping,
+    choose_type,
+    encode,
+    find_overlap,
+    has_numbers,
+    suggest_answers,
+)
 from .server import parse_networks
+from .suggest import async_gather_evidence
 
 
 def _number(lo: int, hi: int) -> NumberSelector:
@@ -186,8 +201,10 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
 
     def __init__(self) -> None:
         self._mappings: list[Mapping] | None = None
-        self._draft: dict[str, Any] = {}
+        self._form: dict[str, Any] = {}  # confirm-step values plus "entity_id"
+        self._evidence = Evidence()
         self._edit_index: int | None = None
+        self._pending: dict[str, Any] | None = None  # input that got a notice instead of saving
 
     @property
     def mappings(self) -> list[Mapping]:
@@ -221,17 +238,19 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             entity_id = user_input["entity"]
-            state = self.hass.states.get(entity_id)
-            detected = state and detect(
-                entity_id.split(".", 1)[0], state.state, dict(state.attributes)
+            domain = entity_id.split(".", 1)[0]
+            evidence = await async_gather_evidence(self.hass, entity_id)
+            numeric = has_numbers(evidence) or (
+                evidence.device_class is not None
+                and evidence.device_class not in NON_NUMERIC_DEVICE_CLASSES
             )
-            if detected:
+            if domain in BIT_DOMAINS or numeric:
                 self._edit_index = None
-                self._draft = {
-                    "entity_id": entity_id,
-                    "address": int(user_input["address"]),
-                    **detected,
-                }
+                self._evidence = evidence
+                self._form = self._prefill(
+                    {"entity_id": entity_id, "address": int(user_input["address"])},
+                    suggest_answers(domain, evidence),
+                )
                 return await self.async_step_confirm()
             errors["base"] = "unsupported_entity"
         return self.async_show_form(
@@ -250,7 +269,26 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         if user_input is not None:
             self._edit_index = int(user_input["mapping"])
-            self._draft = self.mappings[self._edit_index].as_dict()
+            mapping = self.mappings[self._edit_index]
+            self._evidence = await async_gather_evidence(self.hass, mapping.entity_id)
+            self._form = self._prefill(
+                {
+                    "entity_id": mapping.entity_id,
+                    "address": mapping.address,
+                    "writable": mapping.writable,
+                    "fallback": mapping.fallback,
+                },
+                answers_from_mapping(mapping, self._evidence),
+            )
+            # unchanged answers must give back exactly the stored type: if Automatic would
+            # pick another one, start the override on the stored type
+            stored = TypeChoice(mapping.data_type, mapping.scale, mapping.signed)
+            if self._choice(self._form) != stored:
+                self._form["advanced"] = {
+                    "data_type": str(mapping.data_type),
+                    "scale": str(mapping.scale),
+                    "signed": mapping.signed,
+                }
             return await self.async_step_confirm()
         return self.async_show_form(
             step_id="edit_mapping",
@@ -291,18 +329,32 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
         errors: dict[str, str] = {}
         placeholders = {"conflict": ""}
         if user_input is not None:
-            mapping = Mapping(
-                entity_id=self._draft["entity_id"],
+            shown = self._choice(self._form)
+            self._form = {"entity_id": self._form["entity_id"], **user_input}
+            choice = self._choice(self._form)
+            confirmed = user_input == self._pending  # same input again: user saw the notice
+            mapping = choice and Mapping(
+                entity_id=self._form["entity_id"],
                 address=int(user_input["address"]),
-                data_type=user_input["data_type"],
-                scale=int(user_input["scale"]),
-                signed=user_input["signed"],
+                data_type=choice.data_type,
+                scale=choice.scale,
+                signed=choice.signed,
                 writable=user_input["writable"],
-                fallback=user_input["fallback"],
+                fallback=user_input.get("fallback", 0),
             )
-            if error := self._validate(mapping, placeholders):
+            if mapping is None:
+                errors["base"] = "value_too_large"
+            elif error := self._validate(mapping, placeholders):
                 errors["base"] = error
-                self._draft = mapping.as_dict()
+            elif not confirmed and (warning := self._warning(user_input)):
+                errors["base"] = warning
+                self._pending = user_input
+            elif (
+                choice != shown and not confirmed and user_input["advanced"]["data_type"] == "auto"
+            ):
+                # no live preview in HA forms: show the new result before saving it
+                errors["base"] = "result_changed"
+                self._pending = user_input
             elif self._edit_index is None:
                 self.mappings.append(mapping)
                 return self._save()
@@ -310,36 +362,133 @@ class ModbusSlaveOptionsFlow(OptionsFlow):
                 self.mappings[self._edit_index] = mapping
                 return self._save()
 
-        draft = Mapping.from_dict(self._draft)
-        return self.async_show_form(
-            step_id="confirm",
-            data_schema=vol.Schema(
+        form = self._form
+        fields: dict[Any, Any] = {
+            vol.Required("address", default=form["address"]): _number(0, 65535)
+        }
+        if not self._is_bit:
+            fields |= {
+                vol.Required("negative", default=form["negative"]): BooleanSelector(),
+                vol.Required("decimals", default=form["decimals"]): SelectSelector(
+                    SelectSelectorConfig(
+                        options=["0", "1", "2", "3"], mode=SelectSelectorMode.DROPDOWN
+                    )
+                ),
+                vol.Required("max_value", default=form["max_value"]): NumberSelector(
+                    NumberSelectorConfig(min=0, mode=NumberSelectorMode.BOX, step="any")
+                ),
+            }
+        fields[vol.Required("writable", default=form["writable"])] = BooleanSelector()
+        if not self._is_bit:
+            fields[vol.Required("fallback", default=form["fallback"])] = NumberSelector(
+                NumberSelectorConfig(mode=NumberSelectorMode.BOX, step="any")
+            )
+        advanced = form["advanced"]
+        fields[vol.Required("advanced")] = section(
+            vol.Schema(
                 {
-                    vol.Required("address", default=draft.address): _number(0, 65535),
-                    vol.Required("data_type", default=str(draft.data_type)): SelectSelector(
+                    vol.Required("data_type", default=advanced["data_type"]): SelectSelector(
                         SelectSelectorConfig(
-                            options=[str(t) for t in DataType], mode=SelectSelectorMode.DROPDOWN
+                            options=["auto", *(str(t) for t in DataType)],
+                            mode=SelectSelectorMode.DROPDOWN,
+                            translation_key="data_type",
                         )
                     ),
-                    vol.Required("scale", default=str(draft.scale)): SelectSelector(
+                    vol.Required("scale", default=advanced["scale"]): SelectSelector(
                         SelectSelectorConfig(
                             options=["1", "10", "100", "1000"], mode=SelectSelectorMode.DROPDOWN
                         )
                     ),
-                    vol.Required("signed", default=draft.signed): BooleanSelector(),
-                    vol.Required("writable", default=draft.writable): BooleanSelector(),
-                    vol.Required("fallback", default=draft.fallback): NumberSelector(
-                        NumberSelectorConfig(mode=NumberSelectorMode.BOX, step="any")
-                    ),
+                    vol.Required("signed", default=advanced["signed"]): BooleanSelector(),
                 }
             ),
-            description_placeholders={
-                "entity": draft.entity_id,
-                "summary": _label(draft),
-                **placeholders,
-            },
+            {"collapsed": True},
+        )
+        return self.async_show_form(
+            step_id="confirm",
+            data_schema=vol.Schema(fields),
+            description_placeholders={**self._describe(form), **placeholders},
             errors=errors,
         )
+
+    def _warning(self, user_input: dict[str, Any]) -> str:
+        """An answer the evidence contradicts (not blocking: submitting again keeps it)."""
+        if self._is_bit or user_input["advanced"]["data_type"] != "auto":
+            return ""
+        ev = self._evidence
+        if not user_input["negative"] and any(v is not None and v < 0 for v in (ev.lo, ev.current)):
+            return "warn_negative"
+        seen = [abs(v) for v in (ev.lo, ev.hi) if v is not None]
+        if seen and float(user_input["max_value"]) < max(seen):
+            return "warn_max"
+        return ""
+
+    @property
+    def _is_bit(self) -> bool:
+        return self._form["entity_id"].split(".", 1)[0] in BIT_DOMAINS
+
+    @staticmethod
+    def _prefill(base: dict[str, Any], answers: Answers) -> dict[str, Any]:
+        """Form values from the answers, plus the mapping's own settings."""
+        return {
+            "writable": False,
+            "fallback": 0,
+            "advanced": {"data_type": "auto", "scale": "1", "signed": False},
+            **base,
+            "negative": answers.negative,
+            "decimals": str(answers.decimals),
+            "max_value": answers.max_value,
+        }
+
+    def _choice(self, form: dict[str, Any]) -> TypeChoice | None:
+        advanced = form["advanced"]
+        if advanced["data_type"] != "auto":  # expert override, used as given
+            return TypeChoice(
+                DataType(advanced["data_type"]), int(advanced["scale"]), bool(advanced["signed"])
+            )
+        if self._is_bit:
+            return TypeChoice(DataType.BIT)
+        answers = Answers(bool(form["negative"]), int(form["decimals"]), float(form["max_value"]))
+        return choose_type(answers, self.config_entry.data.get(CONF_FLOAT_SUPPORT, False))
+
+    def _describe(self, form: dict[str, Any]) -> dict[str, str]:
+        """Placeholders: what the entity reports and what the master will read."""
+        ev = self._evidence
+
+        def num(value: float | None) -> str:
+            return "–" if value is None else f"{value:g}"
+
+        text = {
+            "entity": form["entity_id"],
+            "current": num(ev.current),
+            "lo": num(ev.lo),
+            "hi": num(ev.hi),
+            "days": str(ev.history_days),
+            "result_type": "–",
+            "registers": "–",
+            "example_value": "–",
+            "example_words": "–",
+        }
+        choice = self._choice(form)
+        if choice is None:
+            return text
+        example = Mapping(form["entity_id"], 0, choice.data_type, choice.scale, choice.signed)
+        result = str(choice.data_type)
+        if choice.data_type in (DataType.SCALED16, DataType.SCALED32):
+            result += f", {'signed' if choice.signed else 'unsigned'}, ×{choice.scale}"
+        if self._is_bit:
+            value = "on"
+        else:
+            sample = next((v for v in (ev.current, ev.hi) if v is not None), None)
+            value = num(sample if sample is not None else float(form["max_value"]))
+        words, _ = encode(example, value)
+        text |= {
+            "result_type": result,
+            "registers": str(example.size),
+            "example_value": value,
+            "example_words": " ".join(str(int(w)) for w in words),
+        }
+        return text
 
     def _validate(self, mapping: Mapping, placeholders: dict[str, str]) -> str:
         domain = mapping.entity_id.split(".", 1)[0]

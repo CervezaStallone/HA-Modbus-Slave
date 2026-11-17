@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResultType, InvalidData
+from homeassistant.data_entry_flow import FlowResultType, InvalidData, section
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_slave.const import DOMAIN
@@ -89,11 +89,11 @@ async def test_user_duplicate_port(hass, free_port):
     assert result["reason"] == "already_configured"
 
 
-async def setup_entry(hass, port, mappings=()):
+async def setup_entry(hass, port, mappings=(), **data):
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id=str(port),
-        data={"slave_id": 1, "port": port},
+        data={"slave_id": 1, "port": port, **data},
         options={"mappings": list(mappings)},
     )
     entry.add_to_hass(hass)
@@ -166,28 +166,39 @@ async def add_mapping(hass, entry, entity, address, **confirm):
     )
     if result["step_id"] != "confirm":
         return result
-    defaults = {str(k): k.default() for k in result["data_schema"].schema}
+    defaults = form_defaults(result)
     return await hass.config_entries.options.async_configure(
         result["flow_id"], {**defaults, **confirm}
     ), defaults
 
 
-async def test_add_mapping_detects_type(hass, free_port):
-    hass.states.async_set("sensor.t", "12.34")
+def form_defaults(result):
+    """Default form values, including those inside a collapsed section."""
+    out = {}
+    for key, value in result["data_schema"].schema.items():
+        if isinstance(value, section):
+            out[str(key)] = {str(k): k.default() for k in value.schema.schema}
+        else:
+            out[str(key)] = key.default()
+    return out
+
+
+async def test_confirm_prefills_from_evidence(hass, free_port):
+    hass.states.async_set("sensor.t", "21.34", {"device_class": "temperature"})
     entry = await setup_entry(hass, free_port)
     result, defaults = await add_mapping(hass, entry, "sensor.t", 100)
-    assert defaults["data_type"] == "float32"
-    assert defaults["scale"] == "100"
-    assert defaults["writable"] is False
+    assert defaults.get("negative") is True
+    assert defaults.get("decimals") == "2"
+    assert defaults.get("max_value") == 50
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert entry.options["mappings"] == [
         {
             "entity_id": "sensor.t",
             "address": 100,
-            "data_type": "float32",
+            "data_type": "scaled16",
             "scale": 100,
-            "signed": False,
+            "signed": True,
             "writable": False,
             "fallback": 0,
         }
@@ -215,7 +226,8 @@ async def test_add_mapping_overlap(hass, free_port):
 async def test_add_mapping_past_end(hass, free_port):
     hass.states.async_set("sensor.a", "1")
     entry = await setup_entry(hass, free_port)
-    result, _ = await add_mapping(hass, entry, "sensor.a", 65535)
+    advanced = {"data_type": "float32", "scale": "1", "signed": False}
+    result, _ = await add_mapping(hass, entry, "sensor.a", 65535, advanced=advanced)
     assert result["errors"] == {"base": "address_out_of_range"}
 
 
@@ -234,7 +246,8 @@ async def test_add_mapping_past_end(hass, free_port):
 async def test_writable_validation(hass, free_port, entity, state, data_type, error):
     hass.states.async_set(entity, state, {"min": 0, "max": 10, "step": 1})
     entry = await setup_entry(hass, free_port)
-    result, _ = await add_mapping(hass, entry, entity, 0, data_type=data_type, writable=True)
+    advanced = {"data_type": data_type, "scale": "1", "signed": False}
+    result, _ = await add_mapping(hass, entry, entity, 0, advanced=advanced, writable=True)
     if error:
         assert result["errors"] == {"base": error}
     else:
@@ -263,7 +276,7 @@ async def test_edit_and_remove(hass, free_port):
         "sensor.gone → REG 200–200 uint16 (missing)",
     ]
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"mapping": "0"})
-    defaults = {str(k): k.default() for k in result["data_schema"].schema}
+    defaults = form_defaults(result)
     # moving within its own range must not count as overlap with itself
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {**defaults, "address": 101}
@@ -358,3 +371,104 @@ async def test_float_support_set_and_reconfigured(hass, free_port):
     assert result["reason"] == "reconfigure_successful"
     assert entry.data["float_support"] is False
     assert entry.options["mappings"] == mappings
+
+
+async def test_edit_unchanged_keeps_type(hass, free_port):
+    hass.states.async_set("sensor.a", "1.5")
+    stored = {
+        "entity_id": "sensor.a",
+        "address": 100,
+        "data_type": "float32",
+        "scale": 1,
+        "signed": False,
+        "writable": False,
+        "fallback": 0,
+    }
+    entry = await setup_entry(hass, free_port, [stored])  # float_support is off
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "edit_mapping"}
+    )
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"mapping": "0"})
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], form_defaults(result)
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options["mappings"] == [stored]
+
+
+async def test_confirm_float_support_picks_float32(hass, free_port):
+    hass.states.async_set("sensor.t", "21.34", {"device_class": "temperature"})
+    entry = await setup_entry(hass, free_port, float_support=True)
+    result, _ = await add_mapping(hass, entry, "sensor.t", 100)
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options["mappings"][0]["data_type"] == "float32"
+
+
+async def test_confirm_changed_answer_reshows_then_saves(hass, free_port):
+    hass.states.async_set("sensor.t", "21.34", {"device_class": "temperature"})
+    entry = await setup_entry(hass, free_port)
+    result, _ = await add_mapping(hass, entry, "sensor.t", 100, decimals="0")
+    assert result.get("errors") == {"base": "result_changed"}
+    assert "int16" in result["description_placeholders"]["result_type"]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], form_defaults(result)
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options["mappings"][0]["data_type"] == "int16"
+
+
+async def test_confirm_value_too_large(hass, free_port):
+    hass.states.async_set("sensor.t", "21.34")
+    entry = await setup_entry(hass, free_port)
+    result, _ = await add_mapping(hass, entry, "sensor.t", 100, decimals="3", max_value=1e7)
+    assert result.get("errors") == {"base": "value_too_large"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], form_defaults(result)
+    )
+    assert result.get("errors") == {"base": "value_too_large"}
+
+
+async def test_confirm_warns_when_unticking_negative(hass, free_port):
+    hass.states.async_set("sensor.t", "-3")
+    entry = await setup_entry(hass, free_port)
+    result, defaults = await add_mapping(hass, entry, "sensor.t", 100, negative=False)
+    assert defaults["negative"] is True
+    assert result.get("errors") == {"base": "warn_negative"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], form_defaults(result)
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options["mappings"][0]["data_type"] == "uint16"
+
+
+async def test_confirm_warns_when_max_below_seen(hass, free_port):
+    hass.states.async_set("sensor.t", "500")
+    entry = await setup_entry(hass, free_port)
+    result, _ = await add_mapping(hass, entry, "sensor.t", 100, max_value=100)
+    assert result.get("errors") == {"base": "warn_max"}
+
+
+async def test_confirm_bit_entity_has_no_questions(hass, free_port):
+    hass.states.async_set("switch.s", "on")
+    entry = await setup_entry(hass, free_port)
+    result, defaults = await add_mapping(hass, entry, "switch.s", 5)
+    assert not {"negative", "decimals", "max_value"} & defaults.keys()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options["mappings"][0]["data_type"] == "bit"
+
+
+async def test_add_mapping_unavailable_sensor_with_device_class(hass, free_port):
+    hass.states.async_set("sensor.x", "unavailable", {"device_class": "power"})
+    hass.states.async_set("sensor.ts", "unavailable", {"device_class": "timestamp"})
+    entry = await setup_entry(hass, free_port)
+    result, defaults = await add_mapping(hass, entry, "sensor.x", 0)
+    assert defaults["negative"] is True  # power can be fed back
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    result = await add_mapping(hass, entry, "sensor.ts", 10)
+    assert result["errors"] == {"base": "unsupported_entity"}
