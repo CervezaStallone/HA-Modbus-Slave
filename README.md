@@ -235,7 +235,7 @@ The master gets an answer once Home Assistant has handled the call. The register
 |---|---|
 | `ILLEGAL_ADDRESS` (02) | Address not mapped, mapping read-only, or the write covers only part of a 32-bit value |
 | `ILLEGAL_VALUE` (03) | Value outside the entity's `min`/`max` |
-| `DEVICE_FAILURE` (04) | The Home Assistant service call failed |
+| `DEVICE_FAILURE` (04) | The Home Assistant service call failed, or the entity is unavailable or missing |
 
 ---
 

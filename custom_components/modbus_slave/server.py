@@ -6,6 +6,8 @@ import ipaddress
 import logging
 import math
 
+import voluptuous as vol
+from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from pymodbus.constants import ExcCodes
@@ -68,6 +70,12 @@ class HAContext(ModbusServerContext):
         if mapping is None:
             return ExcCodes.ILLEGAL_ADDRESS
 
+        state = self.hass.states.get(mapping.entity_id)
+        if state is None or state.state == STATE_UNAVAILABLE:
+            # Home Assistant skips unavailable entities silently; don't report success
+            _LOGGER.warning("Modbus write to %s refused: entity is unavailable", mapping.entity_id)
+            return ExcCodes.DEVICE_FAILURE
+
         value = decode(mapping, list(values))
         domain = mapping.entity_id.split(".", 1)[0]
         try:
@@ -77,8 +85,7 @@ class HAContext(ModbusServerContext):
                     "homeassistant", service, {"entity_id": mapping.entity_id}, blocking=True
                 )
             else:
-                state = self.hass.states.get(mapping.entity_id)
-                attrs = state.attributes if state else {}
+                attrs = state.attributes
                 if math.isnan(value) or not (
                     attrs.get("min", -math.inf) <= value <= attrs.get("max", math.inf)
                 ):
@@ -89,7 +96,7 @@ class HAContext(ModbusServerContext):
                     {"entity_id": mapping.entity_id, "value": value},
                     blocking=True,
                 )
-        except (HomeAssistantError, ValueError) as err:
+        except (HomeAssistantError, ValueError, vol.Invalid) as err:
             _LOGGER.warning("Modbus write to %s failed: %s", mapping.entity_id, err)
             return ExcCodes.DEVICE_FAILURE
         # register itself is updated by the state listener, not optimistically
@@ -130,6 +137,8 @@ class HAModbusServer(ModbusTcpServer):
         if any(ip in net for net in self._allowed):
             return True
         if host not in self._rejected:  # warn once per address, a scanner must not flood the log
+            if len(self._rejected) >= 1000:
+                self._rejected.clear()  # ponytail: crude cap, an LRU if repeat warnings ever matter
             self._rejected.add(host)
             _LOGGER.warning("Rejected Modbus connection from %s: not in the allowed list", host)
         return False

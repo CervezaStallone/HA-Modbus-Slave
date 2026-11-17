@@ -5,6 +5,7 @@ import struct
 import time
 
 import pytest
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.setup import async_setup_component
@@ -217,3 +218,49 @@ async def test_listen_address(hass, free_port, client):
     c = await client()
     assert (await c.read_holding_registers(0, count=1, device_id=1)).registers == [0]
     assert entry.runtime_data.server.connected_masters == 1
+
+
+def _writable_uint16(entity_id="number.n"):
+    return [{"entity_id": entity_id, "address": 0, "data_type": "uint16", "writable": True}]
+
+
+@pytest.mark.parametrize("make_bad", ["unavailable", "missing"])
+async def test_write_to_unavailable_entity_fails(hass, free_port, client, make_bad):
+    calls = []
+    hass.services.async_register("number", "set_value", calls.append)
+    if make_bad == "unavailable":
+        hass.states.async_set("number.n", "unavailable", {"min": 0, "max": 10})
+    await setup(hass, free_port, _writable_uint16())
+    c = await client()
+    assert (await c.write_register(0, 2, device_id=1)).exception_code == DEVICE_FAILURE
+    assert calls == []
+
+
+async def test_write_to_unknown_state_goes_through(hass, free_port, client):
+    calls = []
+    hass.services.async_register("number", "set_value", calls.append)
+    hass.states.async_set("number.n", "unknown", {"min": 0, "max": 10})
+    await setup(hass, free_port, _writable_uint16())
+    c = await client()
+    assert not (await c.write_register(0, 2, device_id=1)).isError()
+    assert len(calls) == 1
+
+
+async def test_invalid_service_data_is_device_failure(hass, free_port, client, caplog):
+    def reject(call):
+        raise vol.Invalid("bad")
+
+    hass.services.async_register("number", "set_value", reject)
+    hass.states.async_set("number.n", "1", {"min": 0, "max": 10})
+    await setup(hass, free_port, _writable_uint16())
+    c = await client()
+    assert (await c.write_register(0, 2, device_id=1)).exception_code == DEVICE_FAILURE
+    assert "Modbus write to number.n failed" in caplog.text
+
+
+async def test_rejected_hosts_are_capped(hass, free_port):
+    entry = await setup(hass, free_port, allowed_ips=["10.0.0.1/32"])
+    server = entry.runtime_data.server
+    for i in range(1001):
+        server.peer_allowed(f"192.168.{i // 256}.{i % 256}")
+    assert len(server._rejected) <= 1000
